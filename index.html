@@ -2843,6 +2843,7 @@ async function settingsDeleteAccount() {
 let _allPlans = [];
 
 // ── Fetch all plans for signed-in user and populate the switcher ──
+// Must be called AFTER loadFromStorage so _currentPlanId is already set.
 async function loadAllPlans() {
   if (!_sbClient || _guestMode) return;
   const { data: { user } } = await _sbClient.auth.getUser();
@@ -2852,6 +2853,9 @@ async function loadAllPlans() {
     .eq('user_id', user.id)
     .order('updated_at', { ascending: false });
   _allPlans = plans || [];
+  // If the plan was just auto-created by loadFromStorage, _currentPlanId is set;
+  // fall back to the first plan in the list so the dropdown always has a selection.
+  if (!_currentPlanId && _allPlans.length > 0) _currentPlanId = _allPlans[0].id;
   renderPlanSwitcher();
 }
 
@@ -3021,18 +3025,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   initSupabase();
 
   if (_sbClient && !_guestMode) {
-    // Listen for auth state changes (login, logout, token refresh)
-    _sbClient.auth.onAuthStateChange(async (event, session) => {
-      if (session && session.user) {
-        el('authOverlay').style.display = 'none';
-        updateUserMenu(session.user);
-        await loadFromStorage();
-        await loadAllPlans();
-        calculate();
-      }
-    });
-
-    // Check for an existing session on page load
+    // Check for an existing session on page load first (handles refresh / tab restore)
     const { data: { session } } = await _sbClient.auth.getSession();
     if (session && session.user) {
       el('authOverlay').style.display = 'none';
@@ -3042,6 +3035,25 @@ document.addEventListener('DOMContentLoaded', async () => {
       calculate();
     }
     // else: overlay stays visible — user must sign in or continue as guest
+
+    // Listen only for explicit SIGN_IN events (not token refresh)
+    _sbClient.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session && session.user) {
+        el('authOverlay').style.display = 'none';
+        updateUserMenu(session.user);
+        _currentPlanId = null; // reset so loadFromStorage picks up the user's plan
+        _allPlans      = [];
+        await loadFromStorage();
+        await loadAllPlans();
+        calculate();
+      } else if (event === 'SIGNED_OUT') {
+        _currentPlanId = null;
+        _allPlans      = [];
+        el('userMenu').style.display    = 'none';
+        el('authOverlay').style.display = '';
+        showAuthPanel('login');
+      }
+    });
   } else {
     // Guest / not-yet-configured mode: hide overlay, load localStorage
     el('authOverlay').style.display = 'none';
