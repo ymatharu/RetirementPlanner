@@ -3019,41 +3019,48 @@ async function deleteCurrentPlan() {
   setSaveStatus('saved');
 }
 
+// ── Shared post-login setup (called once per session) ──
+let _sessionLoaded = false;
+async function onUserSignedIn(user) {
+  if (_sessionLoaded) return; // guard against double-fire
+  _sessionLoaded = true;
+  el('authOverlay').style.display = 'none';
+  updateUserMenu(user);
+  _currentPlanId = null;
+  _allPlans      = [];
+  await loadFromStorage();
+  await loadAllPlans();
+  calculate();
+}
+
 // ── Bootstrap on page load ──
 document.addEventListener('DOMContentLoaded', async () => {
   initSidebarToggle();
   initSupabase();
 
   if (_sbClient && !_guestMode) {
-    // Check for an existing session on page load first (handles refresh / tab restore)
-    const { data: { session } } = await _sbClient.auth.getSession();
-    if (session && session.user) {
-      el('authOverlay').style.display = 'none';
-      updateUserMenu(session.user);
-      await loadFromStorage();
-      await loadAllPlans();
-      calculate();
-    }
-    // else: overlay stays visible — user must sign in or continue as guest
-
-    // Listen only for explicit SIGN_IN events (not token refresh)
+    // onAuthStateChange fires for INITIAL_SESSION, SIGNED_IN, TOKEN_REFRESHED, SIGNED_OUT.
+    // We handle all session-bearing events the same way (idempotent via _sessionLoaded guard).
     _sbClient.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session && session.user) {
-        el('authOverlay').style.display = 'none';
-        updateUserMenu(session.user);
-        _currentPlanId = null; // reset so loadFromStorage picks up the user's plan
-        _allPlans      = [];
-        await loadFromStorage();
-        await loadAllPlans();
-        calculate();
+      if (session && session.user &&
+          (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
+        await onUserSignedIn(session.user);
       } else if (event === 'SIGNED_OUT') {
+        _sessionLoaded = false;
         _currentPlanId = null;
         _allPlans      = [];
         el('userMenu').style.display    = 'none';
         el('authOverlay').style.display = '';
         showAuthPanel('login');
+        applyFields(DEFAULTS);
       }
     });
+
+    // Also check getSession() directly — belt-and-suspenders for file:// and some browsers
+    const { data: { session } } = await _sbClient.auth.getSession();
+    if (session && session.user) {
+      await onUserSignedIn(session.user);
+    }
   } else {
     // Guest / not-yet-configured mode: hide overlay, load localStorage
     el('authOverlay').style.display = 'none';
