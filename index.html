@@ -35,6 +35,45 @@
     .user-menu {
       display: flex; align-items: center; gap: 10px; margin-left: auto;
     }
+
+    /* ── Plan switcher (Phase 2) ── */
+    .plan-switcher {
+      display: flex; align-items: center; gap: 6px;
+    }
+    .plan-select-wrap {
+      position: relative;
+    }
+    #planSelect {
+      appearance: none; -webkit-appearance: none;
+      background: rgba(255,255,255,.12); color: #fff;
+      border: 1px solid rgba(255,255,255,.3); border-radius: 6px;
+      padding: 5px 28px 5px 10px; font-size: 12px; font-weight: 600;
+      cursor: pointer; max-width: 180px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    #planSelect:focus { outline: none; border-color: rgba(255,255,255,.7); }
+    #planSelect option { background: #1e3a5f; color: #fff; }
+    .plan-select-arrow {
+      position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+      pointer-events: none; font-size: 9px; color: rgba(255,255,255,.7);
+    }
+    .plan-icon-btn {
+      background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.25);
+      color: #fff; border-radius: 5px; width: 26px; height: 26px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; font-size: 13px; transition: background .15s;
+      flex-shrink: 0;
+    }
+    .plan-icon-btn:hover { background: rgba(255,255,255,.25); }
+
+    /* ── Save status indicator (Phase 2) ── */
+    #saveStatus {
+      font-size: 11px; opacity: .75; white-space: nowrap;
+      transition: opacity .3s;
+    }
+    #saveStatus.saving { opacity: 1; color: #fbbf24; }
+    #saveStatus.saved  { opacity: .65; }
+
     .user-menu .plan-name-display {
       font-size: 12px; opacity: .85; max-width: 160px;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -128,6 +167,28 @@
       cursor: pointer; margin-top: 8px; transition: background .15s;
     }
     .auth-guest-btn:hover { background: #f7f8fa; }
+
+    /* ── New / Rename Plan modal (Phase 2) ── */
+    #planModal {
+      position: fixed; inset: 0; background: rgba(0,0,0,.45);
+      display: none; align-items: center; justify-content: center;
+      z-index: 500;
+    }
+    #planModal.open { display: flex; }
+    .plan-modal-card {
+      background: #fff; border-radius: 10px; padding: 26px 26px;
+      width: 100%; max-width: 360px; box-shadow: 0 12px 40px rgba(0,0,0,.2);
+    }
+    .plan-modal-card h2 {
+      font-size: 16px; font-weight: 700; color: #1e3a5f;
+      margin-bottom: 16px;
+    }
+    .plan-modal-card input {
+      width: 100%; padding: 8px 10px; border: 1px solid #d0d7de;
+      border-radius: 5px; font-size: 14px; margin-bottom: 14px;
+    }
+    .plan-modal-card input:focus { outline: none; border-color: #3b82d4; }
+    .plan-modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
 
     /* ── Account Settings modal (Phase 1) ── */
     #settingsModal {
@@ -493,12 +554,37 @@
   </div>
 </div>
 
+<!-- ══ New / Rename Plan Modal (Phase 2) ══ -->
+<div id="planModal">
+  <div class="plan-modal-card">
+    <h2 id="planModalTitle">New Plan</h2>
+    <input type="text" id="planModalInput" placeholder="Plan name" maxlength="60"/>
+    <div class="plan-modal-actions">
+      <button class="settings-btn secondary" onclick="closePlanModal()">Cancel</button>
+      <button class="settings-btn" id="planModalConfirm" onclick="confirmPlanModal()">Create</button>
+    </div>
+  </div>
+</div>
+
 <header>
   <h1>Retirement Planner</h1>
-  <span id="lastSaved"></span>
   <!-- User menu — populated by updateUserMenu() -->
   <div class="user-menu" id="userMenu" style="display:none;">
-    <span class="plan-name-display" id="headerPlanName"></span>
+
+    <!-- Plan switcher (Phase 2) -->
+    <div class="plan-switcher" id="planSwitcher">
+      <div class="plan-select-wrap">
+        <select id="planSelect" onchange="switchPlan(this.value)" title="Switch plan"></select>
+        <span class="plan-select-arrow">&#9660;</span>
+      </div>
+      <button class="plan-icon-btn" onclick="openNewPlanModal()" title="New plan">+</button>
+      <button class="plan-icon-btn" onclick="openRenamePlanModal()" title="Rename plan">✎</button>
+      <button class="plan-icon-btn" onclick="copyCurrentPlan()" title="Save as copy">⧉</button>
+      <button class="plan-icon-btn" onclick="deleteCurrentPlan()" title="Delete plan" style="color:#fca5a5;">✕</button>
+    </div>
+
+    <span id="saveStatus"></span>
+
     <div class="user-avatar" id="userAvatar" onclick="toggleUserDropdown()">
       <span id="userInitial">?</span>
       <div class="user-dropdown" id="userDropdown">
@@ -511,6 +597,7 @@
       </div>
     </div>
   </div>
+  <span id="lastSaved" style="font-size:12px;opacity:.6;"></span>
 </header>
 
 <!-- Sidebar collapse toggle -->
@@ -2217,30 +2304,41 @@ function saveToStorage() {
   const data = collectFields();
   // Always mirror to localStorage as offline backup
   localStorage.setItem(LS_KEY, JSON.stringify(data));
-  // Update header plan name display
-  el('headerPlanName').textContent = data.p_planName || '';
+  // Sync settings modal plan name input if open
   const sn = el('settingsPlanName');
   if (sn && document.activeElement !== sn) sn.value = data.p_planName || '';
 
   if (!_sbClient || _guestMode) return; // guest — localStorage only
+
+  // Show "Saving…" indicator immediately
+  setSaveStatus('saving');
 
   // Debounce cloud save: commit 1 s after last input
   clearTimeout(_saveTimer);
   _saveTimer = setTimeout(async () => {
     const { data: { user } } = await _sbClient.auth.getUser();
     if (!user) return;
+    const planName = data.p_planName || 'My Retirement Plan';
     const payload = {
       user_id:    user.id,
-      name:       data.p_planName || 'My Retirement Plan',
+      name:       planName,
       data:       data,
       updated_at: new Date().toISOString(),
     };
     if (_currentPlanId) {
       await _sbClient.from('plans').update(payload).eq('id', _currentPlanId);
+      // Keep switcher name in sync
+      const p = _allPlans.find(p => p.id === _currentPlanId);
+      if (p && p.name !== planName) { p.name = planName; renderPlanSwitcher(); }
     } else {
       const { data: row } = await _sbClient.from('plans').insert(payload).select().single();
-      if (row) _currentPlanId = row.id;
+      if (row) {
+        _currentPlanId = row.id;
+        _allPlans.unshift({ id: row.id, name: row.name, updated_at: row.updated_at });
+        renderPlanSwitcher();
+      }
     }
+    setSaveStatus('saved');
   }, 1000);
 }
 
@@ -2737,6 +2835,186 @@ async function settingsDeleteAccount() {
   }, 2500);
 }
 
+// ══════════════════════════════════════════════════
+//  Phase 2 — Multiple Plans per User
+// ══════════════════════════════════════════════════
+
+// In-memory list of all plans for current user: [{id, name, data, updated_at}]
+let _allPlans = [];
+
+// ── Fetch all plans for signed-in user and populate the switcher ──
+async function loadAllPlans() {
+  if (!_sbClient || _guestMode) return;
+  const { data: { user } } = await _sbClient.auth.getUser();
+  if (!user) return;
+  const { data: plans } = await _sbClient.from('plans')
+    .select('id, name, updated_at')
+    .eq('user_id', user.id)
+    .order('updated_at', { ascending: false });
+  _allPlans = plans || [];
+  renderPlanSwitcher();
+}
+
+// ── Re-render the <select> options ──
+function renderPlanSwitcher() {
+  const sel = el('planSelect');
+  if (!sel) return;
+  sel.innerHTML = _allPlans.map(p =>
+    `<option value="${p.id}"${p.id === _currentPlanId ? ' selected' : ''}>${escHtml(p.name)}</option>`
+  ).join('');
+  // Show switcher only when user has >0 plans
+  el('planSwitcher').style.display = _allPlans.length > 0 ? '' : 'none';
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Switch to a different plan ──
+async function switchPlan(planId) {
+  if (!_sbClient || !planId || planId === _currentPlanId) return;
+  setSaveStatus('loading');
+  const { data: row } = await _sbClient.from('plans').select('*').eq('id', planId).single();
+  if (!row) { setSaveStatus(''); return; }
+  _currentPlanId = row.id;
+  applyFields(row.data);
+  calculate();
+  setSaveStatus('saved');
+}
+
+// ── Save status indicator ──
+function setSaveStatus(state) {
+  const s = el('saveStatus');
+  if (!s) return;
+  s.className = 'saveStatus ' + state;
+  if      (state === 'saving')  { s.textContent = '● Saving…'; s.className = state; }
+  else if (state === 'saved')   { s.textContent = '✓ Saved';   s.className = state; setTimeout(() => { s.textContent = ''; }, 2500); }
+  else if (state === 'loading') { s.textContent = 'Loading…';  s.className = ''; }
+  else                          { s.textContent = ''; s.className = ''; }
+}
+
+// ── Plan modal (New / Rename) ──
+let _planModalMode = 'new'; // 'new' | 'rename'
+
+function openNewPlanModal() {
+  _planModalMode = 'new';
+  el('planModalTitle').textContent   = 'New Plan';
+  el('planModalConfirm').textContent = 'Create';
+  el('planModalInput').value         = '';
+  el('planModal').classList.add('open');
+  setTimeout(() => el('planModalInput').focus(), 50);
+}
+
+function openRenamePlanModal() {
+  if (!_currentPlanId) return;
+  _planModalMode = 'rename';
+  const cur = _allPlans.find(p => p.id === _currentPlanId);
+  el('planModalTitle').textContent   = 'Rename Plan';
+  el('planModalConfirm').textContent = 'Rename';
+  el('planModalInput').value         = cur ? cur.name : '';
+  el('planModal').classList.add('open');
+  setTimeout(() => el('planModalInput').focus(), 50);
+}
+
+function closePlanModal() {
+  el('planModal').classList.remove('open');
+}
+
+// Enter key submits modal
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && el('planModal').classList.contains('open')) confirmPlanModal();
+  if (e.key === 'Escape' && el('planModal').classList.contains('open')) closePlanModal();
+  if (e.key === 'Escape' && el('settingsModal').classList.contains('open')) closeSettings();
+});
+
+async function confirmPlanModal() {
+  const name = el('planModalInput').value.trim();
+  if (!name) { el('planModalInput').focus(); return; }
+  closePlanModal();
+
+  if (_planModalMode === 'new') {
+    await createNewPlan(name);
+  } else {
+    await renamePlan(_currentPlanId, name);
+  }
+}
+
+// ── Create a new blank plan ──
+async function createNewPlan(name) {
+  if (!_sbClient) return;
+  const { data: { user } } = await _sbClient.auth.getUser();
+  if (!user) return;
+  setSaveStatus('saving');
+  const newData = { ...DEFAULTS, p_planName: name };
+  const { data: row } = await _sbClient.from('plans')
+    .insert({ user_id: user.id, name, data: newData })
+    .select().single();
+  if (!row) { setSaveStatus(''); return; }
+  _allPlans.unshift({ id: row.id, name: row.name, updated_at: row.updated_at });
+  _currentPlanId = row.id;
+  applyFields(newData);
+  renderPlanSwitcher();
+  calculate();
+  setSaveStatus('saved');
+}
+
+// ── Rename current plan ──
+async function renamePlan(planId, name) {
+  if (!_sbClient || !planId) return;
+  setSaveStatus('saving');
+  await _sbClient.from('plans').update({ name, updated_at: new Date().toISOString() }).eq('id', planId);
+  const p = _allPlans.find(p => p.id === planId);
+  if (p) p.name = name;
+  // Also update the p_planName field in the plan data
+  const pn = el('p_planName');
+  if (pn) pn.value = name;
+  renderPlanSwitcher();
+  setSaveStatus('saved');
+}
+
+// ── Copy current plan as a new plan ──
+async function copyCurrentPlan() {
+  if (!_sbClient || !_currentPlanId) return;
+  const cur = _allPlans.find(p => p.id === _currentPlanId);
+  const baseName = cur ? cur.name : 'Plan';
+  const name = baseName + ' (copy)';
+  const { data: { user } } = await _sbClient.auth.getUser();
+  if (!user) return;
+  setSaveStatus('saving');
+  const currentData = collectFields();
+  const copyData    = { ...currentData, p_planName: name };
+  const { data: row } = await _sbClient.from('plans')
+    .insert({ user_id: user.id, name, data: copyData })
+    .select().single();
+  if (!row) { setSaveStatus(''); return; }
+  _allPlans.unshift({ id: row.id, name: row.name, updated_at: row.updated_at });
+  _currentPlanId = row.id;
+  applyFields(copyData);
+  renderPlanSwitcher();
+  calculate();
+  setSaveStatus('saved');
+}
+
+// ── Delete current plan ──
+async function deleteCurrentPlan() {
+  if (!_sbClient || !_currentPlanId) return;
+  if (_allPlans.length <= 1) {
+    alert('You must have at least one plan. Create a new plan before deleting this one.');
+    return;
+  }
+  const cur = _allPlans.find(p => p.id === _currentPlanId);
+  if (!confirm(`Delete "${cur ? cur.name : 'this plan'}"? This cannot be undone.`)) return;
+  setSaveStatus('saving');
+  await _sbClient.from('plans').delete().eq('id', _currentPlanId);
+  _allPlans = _allPlans.filter(p => p.id !== _currentPlanId);
+  // Switch to the next available plan
+  _currentPlanId = _allPlans[0].id;
+  const { data: row } = await _sbClient.from('plans').select('*').eq('id', _currentPlanId).single();
+  if (row) { applyFields(row.data); calculate(); }
+  renderPlanSwitcher();
+  setSaveStatus('saved');
+}
+
 // ── Bootstrap on page load ──
 document.addEventListener('DOMContentLoaded', async () => {
   initSidebarToggle();
@@ -2749,6 +3027,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         el('authOverlay').style.display = 'none';
         updateUserMenu(session.user);
         await loadFromStorage();
+        await loadAllPlans();
         calculate();
       }
     });
@@ -2759,12 +3038,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       el('authOverlay').style.display = 'none';
       updateUserMenu(session.user);
       await loadFromStorage();
+      await loadAllPlans();
       calculate();
     }
     // else: overlay stays visible — user must sign in or continue as guest
   } else {
     // Guest / not-yet-configured mode: hide overlay, load localStorage
     el('authOverlay').style.display = 'none';
+    el('planSwitcher').style.display = 'none'; // no switcher in guest mode
     const loaded = await loadFromStorage();
     if (!loaded) applyFields(DEFAULTS);
     calculate();
