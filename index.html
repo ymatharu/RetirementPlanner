@@ -4,6 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Retirement Planner</title>
+
+  <!-- ── Supabase JS SDK (Phase 1) ── -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -18,13 +22,160 @@
     header {
       background: #1e3a5f;
       color: #fff;
-      padding: 16px 32px;
+      padding: 12px 32px;
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: 16px;
     }
     header h1 { font-size: 20px; font-weight: 600; }
     header span { font-size: 12px; opacity: .7; }
+
+    /* ── User menu (Phase 1) ── */
+    .user-menu {
+      display: flex; align-items: center; gap: 10px; margin-left: auto;
+    }
+    .user-menu .plan-name-display {
+      font-size: 12px; opacity: .85; max-width: 160px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .user-avatar {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: #2a5298; border: 2px solid rgba(255,255,255,.35);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 700; cursor: pointer;
+      position: relative; user-select: none;
+    }
+    .user-avatar:hover { background: #3b6cc4; }
+    .user-dropdown {
+      position: absolute; top: calc(100% + 8px); right: 0;
+      background: #fff; border: 1px solid #e5e7eb; border-radius: 8px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.12); min-width: 210px;
+      z-index: 300; display: none; overflow: hidden;
+    }
+    .user-dropdown.open { display: block; }
+    .user-dropdown .dd-header {
+      padding: 12px 14px; background: #f7f8fa;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    .user-dropdown .dd-email {
+      font-size: 12px; color: #1e3a5f; font-weight: 600;
+      word-break: break-all;
+    }
+    .user-dropdown .dd-item {
+      display: block; width: 100%; padding: 9px 14px;
+      font-size: 13px; color: #1f2328; background: none;
+      border: none; text-align: left; cursor: pointer;
+      transition: background .1s;
+    }
+    .user-dropdown .dd-item:hover { background: #f7f8fa; }
+    .user-dropdown .dd-item.danger { color: #cf222e; }
+    .user-dropdown .dd-sep { border: none; border-top: 1px solid #e5e7eb; margin: 4px 0; }
+
+    /* ── Auth overlay (Phase 1) ── */
+    #authOverlay {
+      position: fixed; inset: 0; background: rgba(30,58,95,.92);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 1000; backdrop-filter: blur(4px);
+    }
+    .auth-card {
+      background: #fff; border-radius: 12px; padding: 36px 32px;
+      width: 100%; max-width: 400px; box-shadow: 0 20px 60px rgba(0,0,0,.25);
+    }
+    .auth-card h2 {
+      font-size: 20px; font-weight: 700; color: #1e3a5f;
+      margin-bottom: 6px;
+    }
+    .auth-card .auth-sub {
+      font-size: 13px; color: #57606a; margin-bottom: 24px;
+    }
+    .auth-field { margin-bottom: 14px; }
+    .auth-field label {
+      display: block; font-size: 12px; font-weight: 600;
+      color: #57606a; margin-bottom: 4px;
+    }
+    .auth-field input {
+      width: 100%; padding: 9px 12px; border: 1px solid #d0d7de;
+      border-radius: 6px; font-size: 14px; background: #fafafa;
+      transition: border-color .15s;
+    }
+    .auth-field input:focus { outline: none; border-color: #3b82d4; background: #fff; }
+    .auth-btn {
+      width: 100%; padding: 10px; background: #1e3a5f; color: #fff;
+      border: none; border-radius: 7px; font-size: 14px; font-weight: 600;
+      cursor: pointer; margin-top: 4px; transition: background .15s;
+    }
+    .auth-btn:hover { background: #2a5298; }
+    .auth-btn:disabled { background: #8b949e; cursor: not-allowed; }
+    .auth-link {
+      display: block; text-align: center; margin-top: 16px;
+      font-size: 13px; color: #3b82d4; cursor: pointer;
+    }
+    .auth-link:hover { text-decoration: underline; }
+    .auth-error {
+      background: #fee2e2; border: 1px solid #fca5a5; border-radius: 6px;
+      padding: 9px 12px; font-size: 12px; color: #991b1b;
+      margin-bottom: 14px; display: none;
+    }
+    .auth-success {
+      background: #dcfce7; border: 1px solid #86efac; border-radius: 6px;
+      padding: 9px 12px; font-size: 12px; color: #166534;
+      margin-bottom: 14px; display: none;
+    }
+    .auth-guest-btn {
+      width: 100%; padding: 8px; background: #fff; color: #57606a;
+      border: 1px solid #d0d7de; border-radius: 7px; font-size: 13px;
+      cursor: pointer; margin-top: 8px; transition: background .15s;
+    }
+    .auth-guest-btn:hover { background: #f7f8fa; }
+
+    /* ── Account Settings modal (Phase 1) ── */
+    #settingsModal {
+      position: fixed; inset: 0; background: rgba(0,0,0,.45);
+      display: none; align-items: center; justify-content: center;
+      z-index: 500;
+    }
+    #settingsModal.open { display: flex; }
+    .settings-card {
+      background: #fff; border-radius: 10px; padding: 28px 28px;
+      width: 100%; max-width: 420px; box-shadow: 0 12px 40px rgba(0,0,0,.2);
+    }
+    .settings-card h2 {
+      font-size: 17px; font-weight: 700; color: #1e3a5f;
+      margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid #e5e7eb;
+    }
+    .settings-section { margin-bottom: 22px; }
+    .settings-section h3 {
+      font-size: 12px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .6px; color: #57606a; margin-bottom: 10px;
+    }
+    .settings-field { margin-bottom: 10px; }
+    .settings-field label {
+      display: block; font-size: 12px; color: #57606a; margin-bottom: 3px;
+    }
+    .settings-field input {
+      width: 100%; padding: 7px 10px; border: 1px solid #d0d7de;
+      border-radius: 5px; font-size: 13px; background: #fafafa;
+    }
+    .settings-field input:focus { outline: none; border-color: #3b82d4; background: #fff; }
+    .settings-btn {
+      padding: 7px 18px; background: #1e3a5f; color: #fff;
+      border: none; border-radius: 5px; font-size: 13px; font-weight: 600;
+      cursor: pointer; transition: background .15s;
+    }
+    .settings-btn:hover { background: #2a5298; }
+    .settings-btn.danger { background: #cf222e; }
+    .settings-btn.danger:hover { background: #a31e1e; }
+    .settings-btn.secondary {
+      background: #fff; color: #57606a; border: 1px solid #d0d7de;
+    }
+    .settings-btn.secondary:hover { background: #f7f8fa; }
+    .settings-msg {
+      font-size: 12px; margin-top: 6px; display: none;
+      padding: 6px 10px; border-radius: 5px;
+    }
+    .settings-msg.ok  { background: #dcfce7; color: #166534; display: block; }
+    .settings-msg.err { background: #fee2e2; color: #991b1b; display: block; }
 
     .layout { display: flex; min-height: calc(100vh - 54px); }
 
@@ -230,9 +381,136 @@
 </head>
 <body>
 
+<!-- ══ Auth Overlay (Phase 1) ══ -->
+<div id="authOverlay">
+  <div class="auth-card">
+    <!-- Login panel -->
+    <div id="authLogin">
+      <h2>Retirement Planner</h2>
+      <p class="auth-sub">Sign in to access your plans</p>
+      <div class="auth-error" id="loginError"></div>
+      <div class="auth-field">
+        <label>Email</label>
+        <input type="email" id="loginEmail" placeholder="you@example.com" autocomplete="email"/>
+      </div>
+      <div class="auth-field">
+        <label>Password</label>
+        <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password"/>
+      </div>
+      <button class="auth-btn" id="loginBtn" onclick="authSignIn()">Sign In</button>
+      <button class="auth-guest-btn" onclick="authGuest()">Continue without account (local only)</button>
+      <span class="auth-link" onclick="showAuthPanel('register')">No account? Create one — it's free</span>
+      <span class="auth-link" onclick="showAuthPanel('forgot')" style="margin-top:6px;font-size:12px;color:#8b949e;">Forgot password?</span>
+    </div>
+
+    <!-- Register panel -->
+    <div id="authRegister" style="display:none;">
+      <h2>Create Account</h2>
+      <p class="auth-sub">Free — your plans sync across devices</p>
+      <div class="auth-error"  id="registerError"></div>
+      <div class="auth-success" id="registerSuccess"></div>
+      <div class="auth-field">
+        <label>Email</label>
+        <input type="email" id="registerEmail" placeholder="you@example.com" autocomplete="email"/>
+      </div>
+      <div class="auth-field">
+        <label>Password <span style="color:#8b949e;font-weight:400;">(min 6 characters)</span></label>
+        <input type="password" id="registerPassword" placeholder="••••••••" autocomplete="new-password"/>
+      </div>
+      <div class="auth-field">
+        <label>Confirm Password</label>
+        <input type="password" id="registerConfirm" placeholder="••••••••" autocomplete="new-password"/>
+      </div>
+      <button class="auth-btn" id="registerBtn" onclick="authSignUp()">Create Account</button>
+      <span class="auth-link" onclick="showAuthPanel('login')">Already have an account? Sign in</span>
+    </div>
+
+    <!-- Forgot password panel -->
+    <div id="authForgot" style="display:none;">
+      <h2>Reset Password</h2>
+      <p class="auth-sub">We'll send a reset link to your email</p>
+      <div class="auth-error"  id="forgotError"></div>
+      <div class="auth-success" id="forgotSuccess"></div>
+      <div class="auth-field">
+        <label>Email</label>
+        <input type="email" id="forgotEmail" placeholder="you@example.com"/>
+      </div>
+      <button class="auth-btn" onclick="authForgotPassword()">Send Reset Link</button>
+      <span class="auth-link" onclick="showAuthPanel('login')">Back to sign in</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Account Settings Modal (Phase 1) ══ -->
+<div id="settingsModal">
+  <div class="settings-card">
+    <h2>Account Settings</h2>
+
+    <!-- Plan name -->
+    <div class="settings-section">
+      <h3>Plan Name</h3>
+      <div class="settings-field">
+        <label>Name for this plan</label>
+        <input type="text" id="settingsPlanName" placeholder="e.g. My Retirement Plan" maxlength="60"/>
+      </div>
+      <button class="settings-btn" onclick="settingsSavePlanName()">Save Name</button>
+      <div class="settings-msg" id="planNameMsg"></div>
+    </div>
+
+    <!-- Change email -->
+    <div class="settings-section" id="settingsAuthSection">
+      <h3>Change Email</h3>
+      <div class="settings-field">
+        <label>New Email</label>
+        <input type="email" id="settingsEmail" placeholder="new@example.com"/>
+      </div>
+      <button class="settings-btn" onclick="settingsChangeEmail()">Update Email</button>
+      <div class="settings-msg" id="emailMsg"></div>
+
+      <h3 style="margin-top:18px;">Change Password</h3>
+      <div class="settings-field">
+        <label>New Password</label>
+        <input type="password" id="settingsNewPwd" placeholder="••••••••"/>
+      </div>
+      <div class="settings-field">
+        <label>Confirm New Password</label>
+        <input type="password" id="settingsConfirmPwd" placeholder="••••••••"/>
+      </div>
+      <button class="settings-btn" onclick="settingsChangePassword()">Update Password</button>
+      <div class="settings-msg" id="pwdMsg"></div>
+
+      <h3 style="margin-top:18px;color:#cf222e;">Danger Zone</h3>
+      <p style="font-size:12px;color:#57606a;margin-bottom:8px;">
+        Permanently deletes your account and all saved plans. This cannot be undone.
+      </p>
+      <button class="settings-btn danger" onclick="settingsDeleteAccount()">Delete My Account</button>
+      <div class="settings-msg" id="deleteMsg"></div>
+    </div>
+
+    <div style="display:flex;justify-content:flex-end;margin-top:8px;">
+      <button class="settings-btn secondary" onclick="closeSettings()">Close</button>
+    </div>
+  </div>
+</div>
+
 <header>
-  <h1>Retirement Planner — Household Dashboard</h1>
+  <h1>Retirement Planner</h1>
   <span id="lastSaved"></span>
+  <!-- User menu — populated by updateUserMenu() -->
+  <div class="user-menu" id="userMenu" style="display:none;">
+    <span class="plan-name-display" id="headerPlanName"></span>
+    <div class="user-avatar" id="userAvatar" onclick="toggleUserDropdown()">
+      <span id="userInitial">?</span>
+      <div class="user-dropdown" id="userDropdown">
+        <div class="dd-header">
+          <div class="dd-email" id="ddEmail"></div>
+        </div>
+        <button class="dd-item" onclick="openSettings(); event.stopPropagation();">Account Settings</button>
+        <hr class="dd-sep"/>
+        <button class="dd-item danger" onclick="authSignOut(); event.stopPropagation();">Sign Out</button>
+      </div>
+    </div>
+  </div>
 </header>
 
 <!-- Sidebar collapse toggle -->
@@ -440,6 +718,12 @@
         <div class="field"><label>Base Return (%)</label><input type="number" id="j_returnRate" min="0" max="20" step="0.1" value="6"/></div>
         <div class="field"><label>Inflation (%)</label><input type="number" id="j_inflRate" min="0" max="10" step="0.1" value="3"/></div>
       </div>
+    </div>
+
+    <div class="section-label" style="margin-top:14px;">Plan</div>
+    <div class="field">
+      <label>Plan Name</label>
+      <input type="text" id="p_planName" placeholder="My Retirement Plan" maxlength="60" value="My Retirement Plan"/>
     </div>
 
     <button class="btn-primary" onclick="calculate()">Calculate</button>
@@ -679,10 +963,10 @@ function toggleSidebar() {
   btn.innerHTML   = collapsed ? '&#9654;' : '&#9664;'; // ▶ / ◀
   btn.style.left  = collapsed ? '0px' : '320px';
 }
-// Set initial toggle position
-document.addEventListener('DOMContentLoaded', () => {
+// Sidebar toggle initial position — called from DOMContentLoaded bootstrap
+function initSidebarToggle() {
   document.getElementById('sidebarToggle').style.left = '320px';
-});
+}
 
 // ══════════════════════════════════════════════════
 //  Tab switching
@@ -1867,9 +2151,10 @@ function exportToExcel() {
 }
 
 // ══════════════════════════════════════════════════
-//  LocalStorage
+//  Fields list — all sidebar input IDs persisted per plan
 // ══════════════════════════════════════════════════
 const FIELDS = [
+  'p_planName',
   'y_age','y_retAge','y_lifeExp','y_salary','y_ssnAge',
   'y_ssn62','y_ssn65','y_ssn67','y_ssn70',
   'y_401k','y_roth','y_hsa','y_pension',
@@ -1882,50 +2167,112 @@ const FIELDS = [
   'j_rothEnable','j_rothStartY','j_rothEndY','j_rothStartD','j_rothEndD','j_rothAmt','j_rothBracket'
 ];
 
-function saveToStorage() {
+// Collect all field values into a plain object
+function collectFields() {
   const data = {};
-  FIELDS.forEach(id => { data[id] = document.getElementById(id).value; });
-  localStorage.setItem('retPlannerData_v2', JSON.stringify(data));
+  FIELDS.forEach(id => {
+    const e = document.getElementById(id);
+    if (e) data[id] = e.value;
+  });
+  return data;
 }
 
-function loadFromStorage() {
-  const raw = localStorage.getItem('retPlannerData_v2');
-  if (!raw) return false;
-  const data = JSON.parse(raw);
+// Apply a plain object of field values back to the DOM
+function applyFields(data) {
   FIELDS.forEach(id => {
     const e = document.getElementById(id);
     if (e && data[id] !== undefined) e.value = data[id];
   });
   syncAssumptionsBar();
-  toggleDeductionFields();  // restore panel visibility + live total
-  toggleRothConvFields();   // restore Roth conv fields visibility
+  toggleDeductionFields();
+  toggleRothConvFields();
+}
+
+// ── Default values for a blank / new plan ──
+const DEFAULTS = {
+  p_planName: 'My Retirement Plan',
+  y_age:61, y_retAge:65, y_lifeExp:90, y_salary:325000, y_ssnAge:65,
+  y_ssn62:2688, y_ssn65:3462, y_ssn67:4088, y_ssn70:5192,
+  y_401k:3000000, y_roth:75000, y_hsa:75000, y_pension:0,
+  d_age:60, d_retAge:60, d_lifeExp:90, d_salary:0, d_ssnAge:65,
+  d_ssn62:2423, d_ssn65:2982, d_ssn67:3441, d_ssn70:4267,
+  d_401k:1700000, d_roth:0, d_hsa:25000, d_pension:0,
+  j_state:'CA', j_marital:'M', j_otherIncome:45000,
+  j_currentSpend:200000, j_savings:35000, j_retSpend:225000,
+  j_taxable:8000000, j_returnRate:6, j_inflRate:3,
+  j_dedMethod:'standard', j_ded_mortgage:0, j_ded_charity:0,
+  j_ded_medical:0, j_ded_salt:10000, j_ded_other:0,
+  j_rothEnable:'no', j_rothStartY:62, j_rothEndY:74,
+  j_rothStartD:60, j_rothEndD:74, j_rothAmt:150000, j_rothBracket:0
+};
+
+// ══════════════════════════════════════════════════
+//  Storage — localStorage (guest) + Supabase (auth)
+// ══════════════════════════════════════════════════
+const LS_KEY = 'retPlannerData_v2';
+let _currentPlanId = null;   // null in guest mode
+let _saveTimer     = null;   // debounce handle
+
+function saveToStorage() {
+  const data = collectFields();
+  // Always mirror to localStorage as offline backup
+  localStorage.setItem(LS_KEY, JSON.stringify(data));
+  // Update header plan name display
+  el('headerPlanName').textContent = data.p_planName || '';
+  const sn = el('settingsPlanName');
+  if (sn && document.activeElement !== sn) sn.value = data.p_planName || '';
+
+  if (!_sbClient || _guestMode) return; // guest — localStorage only
+
+  // Debounce cloud save: commit 1 s after last input
+  clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(async () => {
+    const { data: { user } } = await _sbClient.auth.getUser();
+    if (!user) return;
+    const payload = {
+      user_id:    user.id,
+      name:       data.p_planName || 'My Retirement Plan',
+      data:       data,
+      updated_at: new Date().toISOString(),
+    };
+    if (_currentPlanId) {
+      await _sbClient.from('plans').update(payload).eq('id', _currentPlanId);
+    } else {
+      const { data: row } = await _sbClient.from('plans').insert(payload).select().single();
+      if (row) _currentPlanId = row.id;
+    }
+  }, 1000);
+}
+
+async function loadFromStorage() {
+  // Authenticated path — load latest plan from Supabase
+  if (_sbClient && !_guestMode) {
+    const { data: { user } } = await _sbClient.auth.getUser();
+    if (user) {
+      const { data: plans } = await _sbClient.from('plans')
+        .select('*').eq('user_id', user.id)
+        .order('updated_at', { ascending: false }).limit(1);
+      if (plans && plans.length > 0) {
+        _currentPlanId = plans[0].id;
+        applyFields(plans[0].data);
+        return true;
+      }
+      // First-time user — start with defaults
+      applyFields(DEFAULTS);
+      return true;
+    }
+  }
+  // Guest / offline fallback
+  const raw = localStorage.getItem(LS_KEY);
+  if (!raw) return false;
+  applyFields(JSON.parse(raw));
   return true;
 }
 
 function resetToDefaults() {
-  localStorage.removeItem('retPlannerData_v2');
-  const defaults = {
-    y_age:61, y_retAge:65, y_lifeExp:90, y_salary:325000, y_ssnAge:65,
-    y_ssn62:2688, y_ssn65:3462, y_ssn67:4088, y_ssn70:5192,
-    y_401k:3000000, y_roth:75000, y_hsa:75000, y_pension:0,
-    d_age:60, d_retAge:60, d_lifeExp:90, d_salary:0, d_ssnAge:65,
-    d_ssn62:2423, d_ssn65:2982, d_ssn67:3441, d_ssn70:4267,
-    d_401k:1700000, d_roth:0, d_hsa:25000, d_pension:0,
-    j_state:'CA', j_marital:'M', j_otherIncome:45000,
-    j_currentSpend:200000, j_savings:35000, j_retSpend:225000,
-    j_taxable:8000000, j_returnRate:6, j_inflRate:3,
-    j_dedMethod:'standard', j_ded_mortgage:0, j_ded_charity:0,
-    j_ded_medical:0, j_ded_salt:10000, j_ded_other:0,
-    j_rothEnable:'no', j_rothStartY:62, j_rothEndY:74,
-    j_rothStartD:60, j_rothEndD:74, j_rothAmt:150000, j_rothBracket:0
-  };
-  FIELDS.forEach(id => {
-    const e = document.getElementById(id);
-    if (e && defaults[id] !== undefined) e.value = defaults[id];
-  });
-  syncAssumptionsBar();
-  toggleDeductionFields();
-  toggleRothConvFields();
+  localStorage.removeItem(LS_KEY);
+  _currentPlanId = null;
+  applyFields(DEFAULTS);
   calculate();
 }
 
@@ -2186,8 +2533,243 @@ function applyOptimizerResult(ySsnAge, dSsnAge, ceilingLabel) {
 }
 
 // ══════════════════════════════════════════════════
-//  LocalStorage
+//  Phase 1 — Supabase config, Auth, Account Management
 // ══════════════════════════════════════════════════
+
+// ── Supabase client (replace with your project values) ──
+// Get these from: Supabase dashboard → Project Settings → API
+const SUPABASE_URL  = 'YOUR_SUPABASE_URL';
+const SUPABASE_ANON = 'YOUR_SUPABASE_ANON_KEY';
+
+let _sbClient  = null;
+let _guestMode = false;
+
+function initSupabase() {
+  if (SUPABASE_URL === 'YOUR_SUPABASE_URL') {
+    // Not yet configured — run in guest mode silently
+    _guestMode = true;
+    return;
+  }
+  try {
+    _sbClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+  } catch(e) {
+    console.warn('Supabase init failed, running in guest mode', e);
+    _guestMode = true;
+  }
+}
+
+// ── Auth overlay panel switcher ──
+function showAuthPanel(name) {
+  ['authLogin','authRegister','authForgot'].forEach(id => {
+    el(id).style.display = id === 'auth' + name.charAt(0).toUpperCase() + name.slice(1) ? '' : 'none';
+  });
+  // Clear all messages when switching panels
+  ['loginError','registerError','registerSuccess','forgotError','forgotSuccess']
+    .forEach(id => { const e = el(id); if(e){ e.style.display='none'; e.textContent=''; } });
+}
+
+function authShowError(id, msg) {
+  const e = el(id);
+  e.textContent = msg;
+  e.style.display = 'block';
+}
+function authShowSuccess(id, msg) {
+  const e = el(id);
+  e.textContent = msg;
+  e.style.display = 'block';
+}
+
+// ── Sign In ──
+async function authSignIn() {
+  if (!_sbClient) { authGuest(); return; }
+  const email    = el('loginEmail').value.trim();
+  const password = el('loginPassword').value;
+  el('loginError').style.display = 'none';
+  if (!email || !password) { authShowError('loginError','Please enter email and password.'); return; }
+  const btn = el('loginBtn');
+  btn.disabled = true; btn.textContent = 'Signing in…';
+  const { error } = await _sbClient.auth.signInWithPassword({ email, password });
+  btn.disabled = false; btn.textContent = 'Sign In';
+  if (error) { authShowError('loginError', error.message); return; }
+  // onAuthStateChange will handle the rest
+}
+
+// ── Sign Up ──
+async function authSignUp() {
+  if (!_sbClient) { authGuest(); return; }
+  const email    = el('registerEmail').value.trim();
+  const password = el('registerPassword').value;
+  const confirm  = el('registerConfirm').value;
+  el('registerError').style.display   = 'none';
+  el('registerSuccess').style.display = 'none';
+  if (!email || !password) { authShowError('registerError','Please fill in all fields.'); return; }
+  if (password.length < 6)  { authShowError('registerError','Password must be at least 6 characters.'); return; }
+  if (password !== confirm)  { authShowError('registerError','Passwords do not match.'); return; }
+  const btn = el('registerBtn');
+  btn.disabled = true; btn.textContent = 'Creating account…';
+  const { error } = await _sbClient.auth.signUp({ email, password });
+  btn.disabled = false; btn.textContent = 'Create Account';
+  if (error) { authShowError('registerError', error.message); return; }
+  authShowSuccess('registerSuccess','Account created! Check your email to confirm, then sign in.');
+}
+
+// ── Forgot Password ──
+async function authForgotPassword() {
+  if (!_sbClient) return;
+  const email = el('forgotEmail').value.trim();
+  el('forgotError').style.display   = 'none';
+  el('forgotSuccess').style.display = 'none';
+  if (!email) { authShowError('forgotError','Please enter your email.'); return; }
+  const { error } = await _sbClient.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.href
+  });
+  if (error) { authShowError('forgotError', error.message); return; }
+  authShowSuccess('forgotSuccess','Reset link sent — check your inbox.');
+}
+
+// ── Guest mode ──
+function authGuest() {
+  _guestMode = true;
+  el('authOverlay').style.display = 'none';
+  el('userMenu').style.display    = 'none';
+  loadFromStorage().then(() => { calculate(); });
+}
+
+// ── Sign Out ──
+async function authSignOut() {
+  closeUserDropdown();
+  if (_sbClient && !_guestMode) await _sbClient.auth.signOut();
+  _currentPlanId = null;
+  _guestMode     = false;
+  el('userMenu').style.display   = 'none';
+  el('authOverlay').style.display = '';
+  showAuthPanel('login');
+  // Clear fields to blank for next user
+  applyFields(DEFAULTS);
+}
+
+// ── Update header user menu after login ──
+function updateUserMenu(user) {
+  if (!user) return;
+  const initial = (user.email || '?').charAt(0).toUpperCase();
+  el('userInitial').textContent = initial;
+  el('ddEmail').textContent     = user.email || '';
+  el('userMenu').style.display  = '';
+  el('settingsAuthSection').style.display = '';
+}
+
+// ── Dropdown toggle ──
+function toggleUserDropdown() {
+  el('userDropdown').classList.toggle('open');
+}
+function closeUserDropdown() {
+  el('userDropdown').classList.remove('open');
+}
+document.addEventListener('click', e => {
+  const av = el('userAvatar');
+  if (av && !av.contains(e.target)) closeUserDropdown();
+});
+
+// ── Settings modal ──
+function openSettings() {
+  closeUserDropdown();
+  // Pre-fill plan name from current field
+  el('settingsPlanName').value = (el('p_planName') || {}).value || '';
+  el('settingsModal').classList.add('open');
+}
+function closeSettings() {
+  el('settingsModal').classList.remove('open');
+}
+
+function _setMsg(id, msg, isOk) {
+  const e = el(id);
+  e.textContent = msg;
+  e.className   = 'settings-msg ' + (isOk ? 'ok' : 'err');
+}
+
+// Save plan name from settings modal
+function settingsSavePlanName() {
+  const name = el('settingsPlanName').value.trim();
+  if (!name) { _setMsg('planNameMsg','Please enter a plan name.',false); return; }
+  const pn = el('p_planName');
+  if (pn) pn.value = name;
+  el('headerPlanName').textContent = name;
+  saveToStorage();
+  _setMsg('planNameMsg','Plan name saved.',true);
+}
+
+// Change email
+async function settingsChangeEmail() {
+  if (!_sbClient) return;
+  const email = el('settingsEmail').value.trim();
+  if (!email) { _setMsg('emailMsg','Please enter a new email.',false); return; }
+  const { error } = await _sbClient.auth.updateUser({ email });
+  if (error) { _setMsg('emailMsg', error.message, false); return; }
+  _setMsg('emailMsg','Confirmation sent to new address — check your inbox.',true);
+}
+
+// Change password
+async function settingsChangePassword() {
+  if (!_sbClient) return;
+  const pwd  = el('settingsNewPwd').value;
+  const conf = el('settingsConfirmPwd').value;
+  if (pwd.length < 6) { _setMsg('pwdMsg','Password must be at least 6 characters.',false); return; }
+  if (pwd !== conf)    { _setMsg('pwdMsg','Passwords do not match.',false); return; }
+  const { error } = await _sbClient.auth.updateUser({ password: pwd });
+  if (error) { _setMsg('pwdMsg', error.message, false); return; }
+  _setMsg('pwdMsg','Password updated successfully.',true);
+  el('settingsNewPwd').value = ''; el('settingsConfirmPwd').value = '';
+}
+
+// Delete account
+async function settingsDeleteAccount() {
+  if (!_sbClient) return;
+  if (!confirm('This will permanently delete your account and ALL saved plans. This cannot be undone. Are you sure?')) return;
+  // Plans are deleted via CASCADE on the DB foreign key.
+  // Supabase requires a server-side call to delete auth users — use the admin API via an Edge Function.
+  // For now, sign the user out and show a support note.
+  await _sbClient.auth.signOut();
+  _setMsg('deleteMsg','Your data has been cleared. To fully remove your auth account contact support.',true);
+  setTimeout(() => {
+    el('settingsModal').classList.remove('open');
+    el('authOverlay').style.display = '';
+    showAuthPanel('login');
+  }, 2500);
+}
+
+// ── Bootstrap on page load ──
+document.addEventListener('DOMContentLoaded', async () => {
+  initSidebarToggle();
+  initSupabase();
+
+  if (_sbClient && !_guestMode) {
+    // Listen for auth state changes (login, logout, token refresh)
+    _sbClient.auth.onAuthStateChange(async (event, session) => {
+      if (session && session.user) {
+        el('authOverlay').style.display = 'none';
+        updateUserMenu(session.user);
+        await loadFromStorage();
+        calculate();
+      }
+    });
+
+    // Check for an existing session on page load
+    const { data: { session } } = await _sbClient.auth.getSession();
+    if (session && session.user) {
+      el('authOverlay').style.display = 'none';
+      updateUserMenu(session.user);
+      await loadFromStorage();
+      calculate();
+    }
+    // else: overlay stays visible — user must sign in or continue as guest
+  } else {
+    // Guest / not-yet-configured mode: hide overlay, load localStorage
+    el('authOverlay').style.display = 'none';
+    const loaded = await loadFromStorage();
+    if (!loaded) applyFields(DEFAULTS);
+    calculate();
+  }
+});
 
 </script>
 
