@@ -1,0 +1,14 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Bob / tooling
+.bob/
+
+# Editor
+.vscode/
+.idea/
+
+# Logs
+*.log

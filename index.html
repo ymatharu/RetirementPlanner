@@ -1,0 +1,2535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Retirement Planner</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+      font-size: 14px;
+      line-height: 1.6;
+      background: #f0f2f5;
+      color: #1f2328;
+    }
+
+    header {
+      background: #1e3a5f;
+      color: #fff;
+      padding: 16px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    header h1 { font-size: 20px; font-weight: 600; }
+    header span { font-size: 12px; opacity: .7; }
+
+    .layout { display: flex; min-height: calc(100vh - 54px); }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      width: 320px;
+      min-width: 320px;
+      background: #fff;
+      border-right: 1px solid #e5e7eb;
+      padding: 16px;
+      overflow-y: auto;
+      transition: width .2s, min-width .2s, padding .2s;
+      position: relative;
+    }
+    .sidebar.collapsed {
+      width: 0; min-width: 0; padding: 0; overflow: hidden;
+    }
+    .sidebar.collapsed .sidebar-inner { display: none; }
+
+    /* Toggle button — sits on the border between sidebar and main */
+    .sidebar-toggle {
+      position: fixed;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 100;
+      background: #1e3a5f;
+      color: #fff;
+      border: none;
+      border-radius: 0 5px 5px 0;
+      width: 18px;
+      height: 48px;
+      cursor: pointer;
+      font-size: 11px;
+      line-height: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: left .2s;
+      padding: 0;
+    }
+    .sidebar-toggle:hover { background: #2a5298; }
+
+    .person-tabs { display: flex; gap: 6px; margin-bottom: 14px; }
+    .ptab {
+      flex: 1; padding: 6px; text-align: center; font-size: 12px; font-weight: 600;
+      border: 1px solid #d0d7de; border-radius: 5px; cursor: pointer;
+      background: #f7f8fa; color: #57606a; transition: all .15s;
+    }
+    .ptab.active { background: #1e3a5f; color: #fff; border-color: #1e3a5f; }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    .section-label {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .8px; color: #57606a; margin: 14px 0 8px;
+      padding-bottom: 4px; border-bottom: 1px solid #f0f2f5;
+    }
+    .section-label:first-child { margin-top: 0; }
+
+    .field { margin-bottom: 8px; }
+    .field label { display: block; font-size: 12px; color: #57606a; margin-bottom: 3px; }
+    .field input, .field select {
+      width: 100%; padding: 6px 9px; border: 1px solid #d0d7de;
+      border-radius: 5px; font-size: 13px; background: #fafafa;
+      transition: border-color .15s;
+    }
+    .field input:focus, .field select:focus {
+      outline: none; border-color: #3b82d4; background: #fff;
+    }
+    .field .hint { font-size: 11px; color: #8b949e; margin-top: 2px; }
+
+    .inline2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+    .btn-primary {
+      width: 100%; padding: 9px; background: #1e3a5f; color: #fff;
+      border: none; border-radius: 6px; font-size: 13px; font-weight: 600;
+      cursor: pointer; margin-top: 14px; transition: background .15s;
+    }
+    .btn-primary:hover { background: #2a5298; }
+    .btn-reset {
+      width: 100%; padding: 7px; background: #fff; color: #57606a;
+      border: 1px solid #d0d7de; border-radius: 6px; font-size: 12px;
+      cursor: pointer; margin-top: 6px;
+    }
+    .btn-reset:hover { background: #f7f8fa; }
+
+    /* ── Assumptions bar ── */
+    .assumptions-bar {
+      display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
+      background: #fff; border: 1px solid #e5e7eb; border-radius: 8px;
+      padding: 10px 16px; margin-bottom: 16px; font-size: 13px;
+    }
+    .assumptions-bar label { font-size: 11px; color: #57606a; margin-right: 4px; }
+    .assumptions-bar input {
+      width: 62px; padding: 4px 7px; border: 1px solid #d0d7de;
+      border-radius: 5px; font-size: 13px; font-weight: 600; color: #1e3a5f;
+      background: #f7f8fa;
+    }
+    .assumptions-bar input:focus { outline: none; border-color: #3b82d4; background: #fff; }
+    .assumptions-bar .sep { color: #d0d7de; }
+    .assumptions-bar .abtn {
+      padding: 5px 14px; background: #1e3a5f; color: #fff;
+      border: none; border-radius: 5px; font-size: 12px; font-weight: 600;
+      cursor: pointer; margin-left: auto;
+    }
+    .assumptions-bar .abtn:hover { background: #2a5298; }
+
+    /* ── Main ── */
+    .main { flex: 1; padding: 22px; overflow-y: auto; }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 12px; margin-bottom: 22px;
+    }
+    .card {
+      background: #fff; border: 1px solid #e5e7eb; border-radius: 8px;
+      padding: 14px; text-align: center;
+    }
+    .card .clabel { font-size: 11px; color: #57606a; text-transform: uppercase; letter-spacing: .5px; }
+    .card .cvalue { font-size: 20px; font-weight: 700; color: #1e3a5f; margin-top: 3px; }
+    .card .csub   { font-size: 11px; color: #8b949e; margin-top: 2px; }
+    .card.good .cvalue { color: #1a7f37; }
+    .card.warn .cvalue { color: #b35000; }
+    .card.bad  .cvalue { color: #cf222e; }
+
+    .section {
+      background: #fff; border: 1px solid #e5e7eb; border-radius: 8px;
+      padding: 18px; margin-bottom: 22px;
+    }
+    .section h3 {
+      font-size: 14px; font-weight: 700; color: #1e3a5f;
+      border-bottom: 1px solid #e5e7eb; padding-bottom: 8px; margin-bottom: 14px;
+    }
+
+    /* ── Scenarios ── */
+    .scenarios { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; }
+    .scenario { border: 1px solid #e5e7eb; border-radius: 8px; padding: 14px; text-align: center; }
+    .scenario.conservative { border-top: 3px solid #cf222e; }
+    .scenario.base         { border-top: 3px solid #3b82d4; }
+    .scenario.optimistic   { border-top: 3px solid #1a7f37; }
+    .scenario .stitle { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: #57606a; }
+    .scenario .srate  { font-size: 11px; color: #8b949e; margin: 3px 0 8px; }
+    .scenario .snest  { font-size: 20px; font-weight: 700; }
+    .scenario.conservative .snest { color: #cf222e; }
+    .scenario.base         .snest { color: #3b82d4; }
+    .scenario.optimistic   .snest { color: #1a7f37; }
+    .scenario .sdetail { font-size: 11px; color: #57606a; margin-top: 6px; line-height: 1.6; }
+
+    /* ── Chart ── */
+    .chart-wrap { width: 100%; overflow-x: auto; }
+    svg.chart { display: block; }
+
+    /* ── Accounts ── */
+    .acct-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px,1fr)); gap: 10px; }
+    .acct { border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; text-align: center; }
+    .acct .aname { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: #57606a; }
+    .acct .abal  { font-size: 16px; font-weight: 700; color: #1e3a5f; margin-top: 3px; }
+    .acct .anote { font-size: 10px; color: #8b949e; margin-top: 2px; }
+
+    /* Two-person accounts layout */
+    .person-accts { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .person-accts h4 {
+      font-size: 12px; font-weight: 700; color: #fff; background: #1e3a5f;
+      padding: 5px 10px; border-radius: 4px; margin-bottom: 8px;
+    }
+    .person-accts h4.dipti { background: #7c5cd8; }
+
+    /* ── Tables ── */
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { background: #f7f8fa; text-align: left; padding: 7px 10px;
+         border-bottom: 1px solid #e5e7eb; font-size: 11px; font-weight: 700;
+         color: #57606a; text-transform: uppercase; letter-spacing: .4px; }
+    td { padding: 7px 10px; border-bottom: 1px solid #f0f2f5; }
+    tr:last-child td { border-bottom: none; }
+    tr.hl td { background: #eef6ff; font-weight: 600; }
+
+    .tbl-wrap { max-height: 400px; overflow-y: auto; overflow-x: auto; }
+    .tbl-wrap table { font-size: 12px; min-width: 1900px; }
+    .tbl-wrap th { position: sticky; top: 0; z-index: 1; }
+
+    /* ── Withdrawal ── */
+    .wgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px,1fr)); gap: 10px; }
+    .wcard { border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; }
+    .wcard .wl { font-size: 11px; color: #57606a; text-transform: uppercase; letter-spacing: .4px; }
+    .wcard .wv { font-size: 17px; font-weight: 700; color: #1e3a5f; margin-top: 3px; }
+    .wcard .ws { font-size: 11px; color: #8b949e; margin-top: 2px; }
+
+    .tag { display: inline-block; font-size: 10px; padding: 1px 7px; border-radius: 10px;
+           font-weight: 600; margin-left: 5px; vertical-align: middle; }
+    .tag.y { background: #dbeafe; color: #1d4ed8; }
+    .tag.d { background: #ede9fe; color: #5b21b6; }
+    .tag.j { background: #dcfce7; color: #166534; }
+
+    @media (max-width: 700px) {
+      .layout { flex-direction: column; }
+      .sidebar { width: 100% !important; min-width: 100% !important; border-right: none; border-bottom: 1px solid #e5e7eb; }
+      .scenarios, .person-accts { grid-template-columns: 1fr; }
+      .sidebar-toggle { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Retirement Planner — Household Dashboard</h1>
+  <span id="lastSaved"></span>
+</header>
+
+<!-- Sidebar collapse toggle -->
+<button class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()" title="Show/hide sidebar">&#9664;</button>
+
+<div class="layout">
+
+  <!-- ══ SIDEBAR ══ -->
+  <aside class="sidebar" id="sidebar">
+  <div class="sidebar-inner">
+    <div class="person-tabs">
+      <div class="ptab active" onclick="switchTab('yashpal')">Yashpal</div>
+      <div class="ptab" onclick="switchTab('dipti')">Dipti</div>
+      <div class="ptab" onclick="switchTab('joint')">Joint</div>
+    </div>
+
+    <!-- ── YASHPAL ── -->
+    <div class="tab-panel active" id="tab-yashpal">
+      <div class="section-label">Personal</div>
+      <div class="inline2">
+        <div class="field"><label>Current Age</label><input type="number" id="y_age" min="18" max="80" value="61"/></div>
+        <div class="field"><label>Retirement Age</label><input type="number" id="y_retAge" min="40" max="80" value="65"/></div>
+      </div>
+      <div class="field">
+        <label>Life Expectancy (Age)</label>
+        <input type="number" id="y_lifeExp" min="70" max="110" value="90"/>
+      </div>
+
+      <div class="section-label">Income</div>
+      <div class="field"><label>Salary / Year ($)</label><input type="number" id="y_salary" min="0" value="325000"/></div>
+      <div class="field"><label>SSN Claim Age</label>
+        <select id="y_ssnAge">
+          <option value="62">62</option>
+          <option value="65" selected>65</option>
+          <option value="67">67</option>
+          <option value="70">70</option>
+        </select>
+      </div>
+      <div class="inline2">
+        <div class="field"><label>SSN at 62 / mo</label><input type="number" id="y_ssn62" value="2688"/></div>
+        <div class="field"><label>SSN at 65 / mo</label><input type="number" id="y_ssn65" value="3462"/></div>
+      </div>
+      <div class="inline2">
+        <div class="field"><label>SSN at 67 / mo</label><input type="number" id="y_ssn67" value="4088"/></div>
+        <div class="field"><label>SSN at 70 / mo</label><input type="number" id="y_ssn70" value="5192"/></div>
+      </div>
+
+      <div class="section-label">Accounts ($)</div>
+      <div class="field"><label>401K / IRA</label><input type="number" id="y_401k" value="3000000"/></div>
+      <div class="field"><label>Roth IRA</label><input type="number" id="y_roth" value="75000"/></div>
+      <div class="field"><label>HSA</label><input type="number" id="y_hsa" value="75000"/></div>
+      <div class="field"><label>Pension (annual $)</label><input type="number" id="y_pension" value="0"/></div>
+    </div>
+
+    <!-- ── DIPTI ── -->
+    <div class="tab-panel" id="tab-dipti">
+      <div class="section-label">Personal</div>
+      <div class="inline2">
+        <div class="field"><label>Current Age</label><input type="number" id="d_age" min="18" max="80" value="60"/></div>
+        <div class="field"><label>Retirement Age</label><input type="number" id="d_retAge" min="40" max="80" value="60"/></div>
+      </div>
+      <div class="field">
+        <label>Life Expectancy (Age)</label>
+        <input type="number" id="d_lifeExp" min="70" max="110" value="90"/>
+      </div>
+
+      <div class="section-label">Income</div>
+      <div class="field"><label>Salary / Year ($)</label><input type="number" id="d_salary" min="0" value="0"/></div>
+      <div class="field"><label>SSN Claim Age</label>
+        <select id="d_ssnAge">
+          <option value="62">62</option>
+          <option value="65" selected>65</option>
+          <option value="67">67</option>
+          <option value="70">70</option>
+        </select>
+      </div>
+      <div class="inline2">
+        <div class="field"><label>SSN at 62 / mo</label><input type="number" id="d_ssn62" value="2423"/></div>
+        <div class="field"><label>SSN at 65 / mo</label><input type="number" id="d_ssn65" value="2982"/></div>
+      </div>
+      <div class="inline2">
+        <div class="field"><label>SSN at 67 / mo</label><input type="number" id="d_ssn67" value="3441"/></div>
+        <div class="field"><label>SSN at 70 / mo</label><input type="number" id="d_ssn70" value="4267"/></div>
+      </div>
+
+      <div class="section-label">Accounts ($)</div>
+      <div class="field"><label>401K / IRA</label><input type="number" id="d_401k" value="1700000"/></div>
+      <div class="field"><label>Roth IRA</label><input type="number" id="d_roth" value="0"/></div>
+      <div class="field"><label>HSA</label><input type="number" id="d_hsa" value="25000"/></div>
+      <div class="field"><label>Pension (annual $)</label><input type="number" id="d_pension" value="0"/></div>
+    </div>
+
+    <!-- ── JOINT ── -->
+    <div class="tab-panel" id="tab-joint">
+      <div class="section-label">Location &amp; Status</div>
+      <div class="field">
+        <label>State of Retirement</label>
+        <select id="j_state">
+          <option value="CA" selected>California (CA)</option>
+          <option value="FL">Florida (FL) – No income tax</option>
+          <option value="TX">Texas (TX) – No income tax</option>
+          <option value="NY">New York (NY)</option>
+          <option value="WA">Washington (WA) – No income tax</option>
+          <option value="NV">Nevada (NV) – No income tax</option>
+          <option value="AZ">Arizona (AZ)</option>
+          <option value="OR">Oregon (OR)</option>
+          <option value="CO">Colorado (CO)</option>
+          <option value="OTHER">Other</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Marital Status</label>
+        <select id="j_marital">
+          <option value="M" selected>Married</option>
+          <option value="S">Single</option>
+        </select>
+      </div>
+
+      <div class="section-label">Household Finances</div>
+      <div class="field"><label>Other Income / Year (dividends, rent…)</label><input type="number" id="j_otherIncome" value="45000"/></div>
+      <div class="field"><label>Current Household Spend / Year ($)</label><input type="number" id="j_currentSpend" value="200000"/></div>
+      <div class="field"><label>Annual Savings / Year ($)</label><input type="number" id="j_savings" value="35000"/>
+        <div class="hint">Added to investments each year until last person retires</div>
+      </div>
+      <div class="field"><label>Desired Spend in Retirement / Year ($)</label><input type="number" id="j_retSpend" value="225000"/></div>
+
+      <div class="section-label">Joint / Taxable Accounts ($)</div>
+      <div class="field"><label>Taxable / Brokerage (Joint)</label><input type="number" id="j_taxable" value="8000000"/></div>
+
+      <div class="section-label">Tax Deductions</div>
+      <div class="field">
+        <label>Deduction Method</label>
+        <select id="j_dedMethod" onchange="toggleDeductionFields(); calculate();">
+          <option value="standard">Standard Deduction</option>
+          <option value="itemized">Itemized Deductions</option>
+        </select>
+        <div class="hint" id="stdDedHint">2024: $29,200 (MFJ) / $14,600 (Single). Used automatically.</div>
+      </div>
+      <!-- Itemized fields — hidden until user selects Itemized -->
+      <div id="itemizedFields" style="display:none;">
+        <div class="field">
+          <label>Mortgage Interest ($)</label>
+          <input type="number" id="j_ded_mortgage" min="0" value="0" oninput="updateItemizedTotal(); calculate();"/>
+        </div>
+        <div class="field">
+          <label>Charitable Contributions ($)</label>
+          <input type="number" id="j_ded_charity" min="0" value="0" oninput="updateItemizedTotal(); calculate();"/>
+        </div>
+        <div class="field">
+          <label>Medical Expenses above 7.5% AGI ($)</label>
+          <input type="number" id="j_ded_medical" min="0" value="0" oninput="updateItemizedTotal(); calculate();"/>
+        </div>
+        <div class="field">
+          <label>State &amp; Local Taxes — SALT ($, max $10K)</label>
+          <input type="number" id="j_ded_salt" min="0" max="10000" value="10000" oninput="updateItemizedTotal(); calculate();"/>
+          <div class="hint">IRS caps SALT deduction at $10,000.</div>
+        </div>
+        <div class="field">
+          <label>Other Itemized Deductions ($)</label>
+          <input type="number" id="j_ded_other" min="0" value="0" oninput="updateItemizedTotal(); calculate();"/>
+        </div>
+        <div style="background:#f7f8fa;border:1px solid #e5e7eb;border-radius:5px;padding:8px 10px;margin-top:6px;font-size:12px;">
+          <span style="color:#57606a;">Total Itemized:</span>
+          <strong id="itemizedTotal" style="color:#1e3a5f;">$0</strong>
+          <span id="dedWinner" style="margin-left:8px;font-size:11px;color:#1a7f37;"></span>
+        </div>
+      </div>
+
+      <div class="section-label">Roth Conversions</div>
+      <div class="field">
+        <label>Enable Roth Conversions</label>
+        <select id="j_rothEnable" onchange="toggleRothConvFields(); calculate();">
+          <option value="no">No conversions</option>
+          <option value="yes">Yes — convert annually</option>
+        </select>
+      </div>
+      <div id="rothConvFields" style="display:none;">
+        <div class="inline2">
+          <div class="field"><label>Yashpal Start Age</label><input type="number" id="j_rothStartY" value="62" min="50" max="74" oninput="calculate();"/></div>
+          <div class="field"><label>Yashpal End Age</label><input type="number" id="j_rothEndY"   value="74" min="50" max="74" oninput="calculate();"/></div>
+        </div>
+        <div class="inline2">
+          <div class="field"><label>Dipti Start Age</label><input type="number" id="j_rothStartD" value="60" min="50" max="74" oninput="calculate();"/></div>
+          <div class="field"><label>Dipti End Age</label><input type="number" id="j_rothEndD"   value="74" min="50" max="74" oninput="calculate();"/></div>
+        </div>
+        <div class="field">
+          <label>Annual Conversion Amount ($)</label>
+          <input type="number" id="j_rothAmt" min="0" value="150000" oninput="calculate()"/>
+          <div class="hint">Amount moved from 401K/IRA → Roth each year. Tax is paid from the joint taxable account.</div>
+        </div>
+        <div class="field">
+          <label>Target Bracket Ceiling</label>
+          <select id="j_rothBracket" onchange="calculate()">
+            <option value="0">No bracket limit — use fixed amount above</option>
+            <option value="94300">Fill to top of 22% bracket ($94,300 MFJ taxable income)</option>
+            <option value="201050">Fill to top of 24% bracket ($201,050 MFJ taxable income)</option>
+            <option value="383900">Fill to top of 32% bracket ($383,900 MFJ taxable income)</option>
+          </select>
+          <div class="hint">When set, conversion is reduced if it would push ordinary income above the selected bracket ceiling.</div>
+        </div>
+      </div>
+
+      <div class="section-label">Assumptions</div>
+      <div class="inline2">
+        <div class="field"><label>Base Return (%)</label><input type="number" id="j_returnRate" min="0" max="20" step="0.1" value="6"/></div>
+        <div class="field"><label>Inflation (%)</label><input type="number" id="j_inflRate" min="0" max="10" step="0.1" value="3"/></div>
+      </div>
+    </div>
+
+    <button class="btn-primary" onclick="calculate()">Calculate</button>
+    <div id="sidebarResult" style="display:none;margin-top:10px;padding:10px 12px;background:#f0f4fa;border:1px solid #c9d5e8;border-radius:6px;text-align:center;">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#57606a;">Final Portfolio Value</div>
+      <div id="sidebarResultValue" style="font-size:22px;font-weight:700;color:#1e3a5f;margin:2px 0;"></div>
+      <div id="sidebarResultSub" style="font-size:10px;color:#8b949e;"></div>
+    </div>
+    <button class="btn-reset" onclick="exportToExcel()" style="margin-top:6px;color:#fff;background:#1e3a5f;border-color:#1e3a5f;">⬇ Export Year-by-Year to Excel</button>
+    <button class="btn-reset" onclick="resetToDefaults()">Reset to Defaults</button>
+  </div><!-- /.sidebar-inner -->
+  </aside>
+
+  <!-- ══ MAIN ══ -->
+  <main class="main">
+
+    <!-- Assumptions bar — always visible at top of main -->
+    <div class="assumptions-bar">
+      <span style="font-weight:700;color:#1e3a5f;">Assumptions</span>
+      <span class="sep">|</span>
+      <label for="j_returnRate">Base Return</label>
+      <input type="number" id2="j_returnRate_mirror" oninput="syncAndCalc('j_returnRate',this.value)" value="6" min="0" max="20" step="0.1" style="width:58px;"/>
+      <span style="font-size:12px;color:#57606a;">%</span>
+      <span class="sep">|</span>
+      <label for="j_inflRate">Inflation</label>
+      <input type="number" id2="j_inflRate_mirror" oninput="syncAndCalc('j_inflRate',this.value)" value="3" min="0" max="10" step="0.1" style="width:58px;"/>
+      <span style="font-size:12px;color:#57606a;">%</span>
+      <span class="sep">|</span>
+      <span style="font-size:11px;color:#57606a;">Conservative = Base−2% &nbsp;|&nbsp; Optimistic = Base+2%</span>
+      <button class="abtn" onclick="calculate()">Recalculate</button>
+    </div>
+
+    <div class="cards" id="summaryCards"></div>
+
+    <div class="section">
+      <h3>Scenario Comparison — Combined Household Portfolio</h3>
+      <div class="scenarios" id="scenarios"></div>
+    </div>
+
+    <div class="section">
+      <h3>Combined Portfolio Growth Over Time</h3>
+      <div class="chart-wrap" id="chartWrap"></div>
+    </div>
+
+    <div class="section">
+      <h3>Account Balances at Retirement</h3>
+      <div id="breakdown"></div>
+    </div>
+
+    <div class="section">
+      <h3>Social Security Comparison</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;" id="ssnGrid"></div>
+    </div>
+
+    <div class="section">
+      <h3>Withdrawal Plan</h3>
+      <div class="wgrid" id="withdrawalGrid"></div>
+    </div>
+
+    <div class="section" id="rothSection" style="display:none;">
+      <h3>Roth Conversion Analysis</h3>
+      <div id="rothContent"></div>
+    </div>
+
+    <div class="section" id="optimizerSection">
+      <h3 style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;" onclick="toggleOptimizer()">
+        <span>⚙ Portfolio Optimizer</span>
+        <span id="optimizerChevron" style="font-size:13px;color:#57606a;font-weight:400;">▼ expand</span>
+      </h3>
+      <div id="optimizerBody" style="display:none;">
+        <p style="font-size:12px;color:#57606a;margin-bottom:14px;line-height:1.7;">
+          Sweeps <strong>all combinations</strong> of SSN claim ages (62 / 65 / 67 / 70 for each spouse)
+          and Roth conversion bracket ceilings — <strong>64 scenarios</strong> total — keeping every other
+          input exactly as entered in the sidebar. Results are ranked by <strong>final estate</strong>
+          (total portfolio at end of life). All scenarios use the Base return rate.
+        </p>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px;">
+          <button onclick="runOptimizer()"
+            style="padding:9px 22px;background:#1e3a5f;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">
+            ▶ Run Optimizer
+          </button>
+          <button onclick="openConversionChart()"
+            style="padding:9px 22px;background:#7c5cd8;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">
+            📈 Roth Conversion Chart
+          </button>
+          <span id="optimizerStatus" style="font-size:12px;color:#57606a;"></span>
+        </div>
+        <div id="optimizerResults"></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3 style="display:flex;align-items:center;justify-content:space-between;">
+        Year-by-Year Projection — Base Scenario (Combined)
+        <button onclick="exportToExcel()" style="font-size:12px;font-weight:600;padding:6px 14px;background:#1e3a5f;color:#fff;border:none;border-radius:5px;cursor:pointer;white-space:nowrap;">⬇ Export to Excel</button>
+      </h3>
+      <div class="tbl-wrap">
+        <table id="yearTable"></table>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════
+//  Helpers
+// ══════════════════════════════════════════════════
+const fmt  = n => '$' + Math.round(n).toLocaleString();
+const fmtK = n => {
+  if (Math.abs(n) >= 1e6) return '$' + (n/1e6).toFixed(2) + 'M';
+  if (Math.abs(n) >= 1e3) return '$' + (n/1e3).toFixed(0) + 'K';
+  return fmt(n);
+};
+const pct  = n => n.toFixed(1) + '%';
+const num  = id => parseFloat(document.getElementById(id).value) || 0;
+const sel  = id => document.getElementById(id).value;
+const el   = id => document.getElementById(id);
+
+const STATE_TAX = {
+  CA:10.5, FL:0, TX:0, NY:6.85, WA:0, NV:0, AZ:2.5, OR:9.9, CO:4.4, OTHER:5
+};
+
+// ══════════════════════════════════════════════════
+//  Federal tax engine — 2024 brackets + standard deduction + NIIT
+// ══════════════════════════════════════════════════
+
+// 2024 MFJ ordinary income brackets
+const FED_BRACKETS_MFJ = [
+  { limit:  23200, rate: 0.10 },
+  { limit:  94300, rate: 0.12 },
+  { limit: 201050, rate: 0.22 },
+  { limit: 383900, rate: 0.24 },
+  { limit: 487450, rate: 0.32 },
+  { limit: 731200, rate: 0.35 },
+  { limit: Infinity, rate: 0.37 },
+];
+// 2024 Single ordinary income brackets
+const FED_BRACKETS_S = [
+  { limit:  11600, rate: 0.10 },
+  { limit:  47150, rate: 0.12 },
+  { limit: 100525, rate: 0.22 },
+  { limit: 191950, rate: 0.24 },
+  { limit: 243725, rate: 0.32 },
+  { limit: 609350, rate: 0.35 },
+  { limit: Infinity, rate: 0.37 },
+];
+// 2024 Long-term capital gains brackets (MFJ)
+const LTCG_BRACKETS_MFJ = [
+  { limit:  94050, rate: 0.00 },
+  { limit: 583750, rate: 0.15 },
+  { limit: Infinity, rate: 0.20 },
+];
+// 2024 Long-term capital gains brackets (Single)
+const LTCG_BRACKETS_S = [
+  { limit:  47025, rate: 0.00 },
+  { limit: 518900, rate: 0.15 },
+  { limit: Infinity, rate: 0.20 },
+];
+
+// Standard deductions 2024
+const STD_DED_MFJ    = 29200;
+const STD_DED_SINGLE = 14600;
+
+// NIIT threshold (net investment income tax 3.8%)
+const NIIT_THRESHOLD_MFJ    = 250000;
+const NIIT_THRESHOLD_SINGLE = 200000;
+const NIIT_RATE = 0.038;
+
+/**
+ * Compute progressive tax through a bracket table.
+ * @param {number} income - taxable income (after deductions)
+ * @param {Array}  brackets - [{limit, rate}] in ascending limit order
+ */
+function progressiveTax(income, brackets) {
+  let tax = 0, prev = 0;
+  for (const { limit, rate } of brackets) {
+    if (income <= prev) break;
+    tax += (Math.min(income, limit) - prev) * rate;
+    prev = limit;
+  }
+  return tax;
+}
+
+/**
+ * Full household tax calculation for one retirement year.
+ * All income figures are nominal (inflation-adjusted) dollars.
+ *
+ * @param {object} p
+ *   ordinaryIncome   - 401k/IRA draws + taxable SSN portion + pensions
+ *   capitalGainsGross - gross drawn from taxable acct + qualified dividends
+ *   married          - bool
+ *   stateTaxRate     - decimal (e.g. 0.093 for CA)
+ *   inflFactor       - for adjusting bracket thresholds nominally (approx)
+ */
+function calcTax({ ordinaryIncome, capitalGainsGross, married, stateTaxRate, deductionAmt }) {
+  const brackets  = married ? FED_BRACKETS_MFJ   : FED_BRACKETS_S;
+  const ltcgBrk   = married ? LTCG_BRACKETS_MFJ  : LTCG_BRACKETS_S;
+  const stdDed    = married ? STD_DED_MFJ         : STD_DED_SINGLE;
+  const niitThres = married ? NIIT_THRESHOLD_MFJ  : NIIT_THRESHOLD_SINGLE;
+
+  // Use whichever deduction is passed in (already resolved to std or itemized in project())
+  const totalDeductions = deductionAmt ?? stdDed;
+  const taxableOrd = Math.max(0, ordinaryIncome - totalDeductions);
+
+  // Federal ordinary income tax
+  const fedOrdTax = progressiveTax(taxableOrd, brackets);
+
+  // LTCG stacking: capital gains are stacked on top of ordinary income for bracket purposes
+  const cgBase    = taxableOrd; // LTCG sits on top of ordinary income
+  const fedCgTax  = progressiveTax(cgBase + capitalGainsGross, ltcgBrk)
+                  - progressiveTax(cgBase, ltcgBrk);
+
+  // NIIT: 3.8% on net investment income when MAGI > threshold
+  // MAGI ≈ ordinaryIncome + capitalGainsGross for simplicity
+  const magi      = ordinaryIncome + capitalGainsGross;
+  const niitBase  = Math.max(0, Math.min(capitalGainsGross, magi - niitThres));
+  const niitTax   = niitBase * NIIT_RATE;
+
+  // State tax on all income (flat rate — state deduction omitted for simplicity)
+  const stateTax  = (ordinaryIncome + capitalGainsGross) * stateTaxRate;
+
+  const totalFed  = fedOrdTax + fedCgTax + niitTax;
+  const totalTax  = totalFed + stateTax;
+
+  return { fedOrdTax, fedCgTax, niitTax, stateTax, totalTax,
+           taxableOrd, magi, stdDed };
+}
+
+// ══════════════════════════════════════════════════
+//  Sidebar collapse
+// ══════════════════════════════════════════════════
+function toggleSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  const btn     = document.getElementById('sidebarToggle');
+  const collapsed = sidebar.classList.toggle('collapsed');
+  btn.innerHTML   = collapsed ? '&#9654;' : '&#9664;'; // ▶ / ◀
+  btn.style.left  = collapsed ? '0px' : '320px';
+}
+// Set initial toggle position
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('sidebarToggle').style.left = '320px';
+});
+
+// ══════════════════════════════════════════════════
+//  Tab switching
+// ══════════════════════════════════════════════════
+function switchTab(name) {
+  document.querySelectorAll('.ptab').forEach((t,i) => {
+    const tabs = ['yashpal','dipti','joint'];
+    t.classList.toggle('active', tabs[i] === name);
+  });
+  document.querySelectorAll('.tab-panel').forEach(p => {
+    p.classList.toggle('active', p.id === 'tab-' + name);
+  });
+}
+
+// ══════════════════════════════════════════════════
+//  IRS Uniform Lifetime Table — RMD divisors by age
+//  Source: IRS Publication 590-B (2023)
+// ══════════════════════════════════════════════════
+// SECURE 2.0: individuals born in 1951–1959 start RMDs at 73;
+// born 1960 or later (Yashpal b.1965, Dipti b.1965) start at 75.
+const RMD_TABLE = {
+  75:24.6, 76:23.7, 77:22.9, 78:22.0, 79:21.1,
+  80:20.2, 81:19.4, 82:18.5, 83:17.7, 84:16.8, 85:16.0, 86:15.2, 87:14.4,
+  88:13.7, 89:12.9, 90:12.2, 91:11.5, 92:10.8, 93:10.1, 94:9.5,  95:8.9,
+  96:8.4,  97:7.8,  98:7.3,  99:6.8,  100:6.4
+};
+function rmdDivisor(age) {
+  if (age < 75) return Infinity; // no RMD required yet (born 1960+)
+  return RMD_TABLE[age] || RMD_TABLE[100];
+}
+
+// ══════════════════════════════════════════════════
+//  Core projection — combined household
+// ══════════════════════════════════════════════════
+function project(rate, conv = {}, overrides = {}) {
+  // Yashpal
+  const yAge    = num('y_age');
+  const yRet    = num('y_retAge');
+  const yLife   = num('y_lifeExp');
+  const ySalary = num('y_salary');
+  const ySsnAge = overrides.ySsnAge !== undefined ? overrides.ySsnAge : parseInt(sel('y_ssnAge'));
+  const ySsn    = { 62:num('y_ssn62'), 65:num('y_ssn65'), 67:num('y_ssn67'), 70:num('y_ssn70') };
+  const yPension= num('y_pension');
+
+  // Dipti
+  const dAge    = num('d_age');
+  const dRet    = num('d_retAge');
+  const dLife   = num('d_lifeExp');
+  const dSalary = num('d_salary');
+  const dSsnAge = overrides.dSsnAge !== undefined ? overrides.dSsnAge : parseInt(sel('d_ssnAge'));
+  const dSsn    = { 62:num('d_ssn62'), 65:num('d_ssn65'), 67:num('d_ssn67'), 70:num('d_ssn70') };
+  const dPension= num('d_pension');
+
+  // Joint
+  const otherInc  = num('j_otherIncome');
+  const retSpend  = num('j_retSpend');
+  const annSavings= num('j_savings');
+  const inflRate       = num('j_inflRate') / 100;
+  const stateKey       = sel('j_state');
+  const stateTax       = (STATE_TAX[stateKey] || 0) / 100;
+  const married        = sel('j_marital') === 'M';
+  // Deduction method: standard or itemized (whichever is larger wins, per IRS rules — IRS always uses the higher value)
+  const stdDed         = married ? STD_DED_MFJ : STD_DED_SINGLE;
+  const dedMethod      = sel('j_dedMethod');
+  const itemizedTotal  = dedMethod === 'itemized'
+    ? num('j_ded_mortgage')
+      + num('j_ded_charity')
+      + num('j_ded_medical')
+      + Math.min(num('j_ded_salt'), 10000)  // IRS SALT cap
+      + num('j_ded_other')
+    : 0;
+  // Use itemized only if user chose it AND it exceeds the standard deduction
+  const deductionAmt   = dedMethod === 'itemized'
+    ? Math.max(stdDed, itemizedTotal)
+    : stdDed;
+  // totalTaxRate kept for draw sizing (approx marginal rate used in gross-up calcs)
+  const APPROX_MARGINAL = married ? 0.22 : 0.24;
+  const totalTaxRate = APPROX_MARGINAL + stateTax;
+
+  // Accounts — track separately
+  let y401k   = num('y_401k');
+  let yRoth   = num('y_roth');
+  let yHSA    = num('y_hsa');
+  let d401k   = num('d_401k');
+  let dRoth   = num('d_roth');
+  let dHSA    = num('d_hsa');
+  let jTaxable= num('j_taxable');
+
+  // Both still working? Last retirement is when accumulation ends
+  const lastRet = Math.max(yRet, dRet);
+  // Start from youngest current age; simulate in calendar years
+  const startYear = Math.min(yAge, dAge);
+  const endYear   = Math.max(yLife, dLife);
+
+  const rows = [];
+
+  for (let yr = 0; yr <= endYear - startYear; yr++) {
+    const curYashpalAge = yAge + yr;
+    const curDiptiAge   = dAge + yr;
+
+    const yWorking = curYashpalAge < yRet;
+    const dWorking = curDiptiAge   < dRet;
+    const anyWorking = yWorking || dWorking;
+
+    const inflFactor = Math.pow(1 + inflRate, yr);
+    const spendReal  = retSpend * inflFactor;
+    const otherReal  = otherInc * inflFactor;
+
+    let rowDraws = {};
+    let convAmt = 0, convTax = 0, convBracketRoom = 0;
+
+    if (anyWorking) {
+      // Accumulation: grow + add savings
+      const grow = 1 + rate;
+      y401k    *= grow; d401k    *= grow;
+      yRoth    *= grow; dRoth    *= grow;
+      yHSA     *= grow; dHSA     *= grow;
+      jTaxable *= grow;
+      // Distribute new savings proportionally
+      y401k    += annSavings * 0.35;
+      d401k    += annSavings * 0.25;
+      yRoth    += annSavings * 0.10;
+      jTaxable += annSavings * 0.20;
+      yHSA     += annSavings * 0.05;
+      dHSA     += annSavings * 0.05;
+
+      // ── Roth conversion ──
+      if (conv.enabled) {
+        const yInWindow = curYashpalAge >= conv.startY && curYashpalAge <= conv.endY;
+        const dInWindow = curDiptiAge   >= conv.startD && curDiptiAge   <= conv.endD;
+        if (yInWindow || dInWindow) {
+          // Estimate ordinary income this year (no SSN in accumulation, just other income)
+          const estOrdIncome = otherInc * inflFactor; // dividends counted as cap gains, not ord.
+
+          // Bracket ceiling: when set, the conversion fills exactly to the ceiling (not capped by
+          // the manual amount — the manual amount is only used when no ceiling is chosen).
+          let maxConv;
+          if (conv.bracketCeiling > 0) {
+            const taxableOrdAfterDed = Math.max(0, estOrdIncome - deductionAmt);
+            convBracketRoom = Math.max(0, conv.bracketCeiling - taxableOrdAfterDed);
+            maxConv = convBracketRoom; // fill to the ceiling
+          } else {
+            convBracketRoom = Infinity;
+            maxConv = conv.amt;       // use the manual fixed amount
+          }
+
+          // Split conversion between Y and D proportionally to their 401k balances
+          const totalPre = y401k + d401k;
+          const yShare   = totalPre > 0 ? y401k / totalPre : 0.5;
+          const yConv    = yInWindow ? Math.min(y401k, maxConv * yShare) : 0;
+          const dConv    = dInWindow ? Math.min(d401k, maxConv * (1 - yShare)) : 0;
+          convAmt        = yConv + dConv;
+
+          // Move money: 401k → Roth
+          y401k  -= yConv; d401k  -= dConv;
+          yRoth  += yConv; dRoth  += dConv;   // Roth grows from today
+
+          // Tax on conversion: ordinary income rate, paid from taxable account
+          const convOrdIncome  = estOrdIncome + convAmt;
+          const convTaxResult  = calcTax({ ordinaryIncome: convOrdIncome, capitalGainsGross: otherInc * inflFactor,
+                                           married, stateTaxRate: stateTax, deductionAmt });
+          const baseTaxResult  = calcTax({ ordinaryIncome: estOrdIncome, capitalGainsGross: otherInc * inflFactor,
+                                           married, stateTaxRate: stateTax, deductionAmt });
+          convTax     = convTaxResult.totalTax - baseTaxResult.totalTax;
+          jTaxable   -= convTax; // pay tax from taxable account
+        }
+      }
+    } else {
+      // Distribution phase
+      const ySsnAnnual = curYashpalAge >= ySsnAge ? (ySsn[ySsnAge] || 0) * 12 * inflFactor : 0;
+      const dSsnAnnual = curDiptiAge   >= dSsnAge ? (dSsn[dSsnAge] || 0) * 12 * inflFactor : 0;
+      const pensions   = (yPension + dPension) * inflFactor;
+      const totalFixed = ySsnAnnual + dSsnAnnual + pensions + otherReal;
+
+      // Net spending gap after fixed income — how much the portfolio must cover (after-tax dollars)
+      const portfolioNeeded = Math.max(0, spendReal - totalFixed);
+
+      // ── Step 1: compute RMDs (forced minimums from pre-tax 401k/IRA) ──
+      // RMD is a gross pre-tax amount; we must withdraw at least this much from each 401k/IRA.
+      const yRmdMin = y401k / rmdDivisor(curYashpalAge);
+      const dRmdMin = d401k / rmdDivisor(curDiptiAge);
+
+      const CAP_GAINS_RATE = 0.15;
+
+      // ── Step 2a: RMDs come FIRST — they are mandatory regardless of spending need ──
+      // Draw exactly the RMD minimum from each 401k/IRA.
+      // Net-of-tax RMD proceeds count toward covering the spending need.
+      const drawY401rmd = Math.min(y401k, yRmdMin); y401k -= drawY401rmd;
+      const drawD401rmd = Math.min(d401k, dRmdMin); d401k -= drawD401rmd;
+      const rmdNetProceeds = (drawY401rmd + drawD401rmd) * (1 - totalTaxRate);
+
+      // How much spending need remains after RMD net proceeds?
+      let needed = Math.max(0, portfolioNeeded - rmdNetProceeds);
+
+      // ── Step 2b: voluntary draws — only if RMDs didn't already cover the need ──
+      // When Roth conversions are active (pre-RMD, age < 75), we flip the draw order:
+      // satisfy spending from TAXABLE first, then 401K only up to the bracket ceiling.
+      // This keeps bracket room open for the conversion in Step 4.
+      // When no conversion is active, keep the normal order (401K first, then taxable).
+      const yConvActive = conv.enabled && curYashpalAge >= conv.startY && curYashpalAge <= Math.min(conv.endY, 74);
+      const dConvActive = conv.enabled && curDiptiAge   >= conv.startD && curDiptiAge   <= Math.min(conv.endD, 74);
+      const convActiveThisYear = yConvActive || dConvActive;
+
+      // Pre-compute how much bracket room exists above the RMD ordinary income already in play
+      // (RMD draws + SSN + pensions), so we know how much 401K we can voluntarily draw
+      // before conversion room disappears.
+      const rmdOrdIncome = (drawY401rmd + drawD401rmd) + (ySsnAnnual + dSsnAnnual) * 0.85 + pensions;
+      const volBracketRoom = (conv.enabled && conv.bracketCeiling > 0 && convActiveThisYear)
+        ? Math.max(0, conv.bracketCeiling - Math.max(0, rmdOrdIncome - deductionAmt))
+        : Infinity;
+
+      let drawY401vol, drawD401vol, drawJActual;
+
+      if (convActiveThisYear && volBracketRoom === 0) {
+        // RMDs alone already fill or exceed the bracket ceiling — draw spending purely from taxable/Roth/HSA
+        drawY401vol = 0;
+        drawD401vol = 0;
+        const taxableCapacity = jTaxable * (1 - CAP_GAINS_RATE);
+        const drawJ_net = Math.min(taxableCapacity, Math.max(0, needed));
+        drawJActual = Math.min(jTaxable, drawJ_net / (1 - CAP_GAINS_RATE));
+        jTaxable -= drawJActual; needed -= drawJActual * (1 - CAP_GAINS_RATE);
+      } else if (convActiveThisYear && isFinite(volBracketRoom)) {
+        // Conversion is active: draw from TAXABLE first for spending, then 401K up to bracket room only
+        const taxableCapacity = jTaxable * (1 - CAP_GAINS_RATE);
+        const drawJ_net = Math.min(taxableCapacity, Math.max(0, needed));
+        drawJActual = Math.min(jTaxable, drawJ_net / (1 - CAP_GAINS_RATE));
+        jTaxable -= drawJActual; needed -= drawJActual * (1 - CAP_GAINS_RATE);
+
+        // Now draw from 401K only up to the remaining bracket room (net of tax)
+        const vol401kNetCap = volBracketRoom * (1 - totalTaxRate);
+        const vol401kNeeded = Math.min(needed, vol401kNetCap);
+        const extraPreNeeded = vol401kNeeded / (1 - totalTaxRate);
+        const y401kExtra = Math.min(y401k, extraPreNeeded * (y401k / Math.max(y401k + d401k, 1)));
+        const d401kExtra = Math.min(d401k, extraPreNeeded * (d401k / Math.max(y401k + d401k, 1)));
+        drawY401vol = Math.min(y401k, y401kExtra); y401k -= drawY401vol; needed -= drawY401vol * (1 - totalTaxRate);
+        drawD401vol = Math.min(d401k, d401kExtra); d401k -= drawD401vol; needed -= drawD401vol * (1 - totalTaxRate);
+      } else {
+        // Normal order (no conversion): 401K first, then taxable
+        const extraPreNeeded = needed / (1 - totalTaxRate);
+        const y401kExtra = Math.min(y401k, extraPreNeeded * (y401k / Math.max(y401k + d401k, 1)));
+        const d401kExtra = Math.min(d401k, extraPreNeeded * (d401k / Math.max(y401k + d401k, 1)));
+        drawY401vol = Math.min(y401k, y401kExtra); y401k -= drawY401vol; needed -= drawY401vol * (1 - totalTaxRate);
+        drawD401vol = Math.min(d401k, d401kExtra); d401k -= drawD401vol; needed -= drawD401vol * (1 - totalTaxRate);
+
+        const taxableCapacity = jTaxable * (1 - CAP_GAINS_RATE);
+        const drawJ_net  = Math.min(taxableCapacity, Math.max(0, needed));
+        drawJActual = Math.min(jTaxable, drawJ_net / (1 - CAP_GAINS_RATE));
+        jTaxable -= drawJActual; needed -= drawJActual * (1 - CAP_GAINS_RATE);
+      }
+
+      // Roth & HSA — tax-free, draw last
+      const drawYR = Math.min(yRoth, Math.max(0, needed)); yRoth -= drawYR; needed -= drawYR;
+      const drawDR = Math.min(dRoth, Math.max(0, needed)); dRoth -= drawDR; needed -= drawDR;
+      const drawYH = Math.min(yHSA,  Math.max(0, needed)); yHSA  -= drawYH; needed -= drawYH;
+      const drawDH = Math.min(dHSA,  Math.max(0, needed)); dHSA  -= drawDH;
+
+      // Combine RMD + voluntary 401k draws for reporting
+      const drawY401 = drawY401rmd + drawY401vol;
+      const drawD401 = drawD401rmd + drawD401vol;
+
+      // ── Step 3: any RMD excess (net of tax) flows into taxable — already deducted above ──
+      // yRmdForced / dRmdForced are zero now since we drew exactly the RMD in Step 2a.
+      // Keep variables for table compatibility.
+      const yRmdForced = 0;
+      const dRmdForced = 0;
+
+      const totalWithdrawn = drawJActual + drawY401 + drawD401 + drawYR + drawDR + drawYH + drawDH
+                           + yRmdForced + dRmdForced;
+
+      // ── Tax computation — 2024 progressive brackets + NIIT ──
+      // Ordinary income: 401k/IRA draws + taxable portion of SSN (85%) + pensions
+      const total401kGross = drawY401 + drawD401 + yRmdForced + dRmdForced;
+      const ssnTaxablePct  = 0.85; // IRS: up to 85% taxable for high earners
+      const ordinaryIncome = total401kGross
+                           + (ySsnAnnual + dSsnAnnual) * ssnTaxablePct
+                           + pensions;
+
+      // Capital gains income: taxable account draws + qualified dividends
+      const capitalGainsGross = drawJActual + otherReal;
+
+      const taxResult = calcTax({ ordinaryIncome, capitalGainsGross, married, stateTaxRate: stateTax, deductionAmt });
+
+      // Break out for table display
+      const taxOn401k    = taxResult.fedOrdTax * (total401kGross / Math.max(ordinaryIncome, 1))
+                         + taxResult.stateTax  * (total401kGross / Math.max(ordinaryIncome + capitalGainsGross, 1));
+      const taxOnSsn     = taxResult.fedOrdTax * ((ySsnAnnual + dSsnAnnual) * ssnTaxablePct / Math.max(ordinaryIncome, 1))
+                         + taxResult.stateTax  * ((ySsnAnnual + dSsnAnnual) * ssnTaxablePct / Math.max(ordinaryIncome + capitalGainsGross, 1));
+      const taxOnTaxable = (taxResult.fedCgTax + taxResult.niitTax)
+                         * (drawJActual / Math.max(capitalGainsGross, 1))
+                         + taxResult.stateTax * (drawJActual / Math.max(ordinaryIncome + capitalGainsGross, 1));
+      const taxOnOther   = (taxResult.fedCgTax + taxResult.niitTax)
+                         * (otherReal / Math.max(capitalGainsGross, 1))
+                         + taxResult.stateTax * (otherReal / Math.max(ordinaryIncome + capitalGainsGross, 1));
+
+      const fedTax           = taxResult.fedOrdTax + taxResult.fedCgTax + taxResult.niitTax;
+      const stateTaxAmt      = taxResult.stateTax;
+      const totalTaxPaid     = taxResult.totalTax;
+      const totalGrossIncome = drawJActual + total401kGross + (drawYR + drawDR + drawYH + drawDH)
+                             + (ySsnAnnual + dSsnAnnual) + pensions + otherReal;
+      const effectiveTaxRate = totalGrossIncome > 0 ? totalTaxPaid / totalGrossIncome : 0;
+
+      // ── Step 4: Roth conversion in distribution phase (pre-RMD years only, age < 75) ──
+      // If conversions are enabled and either person is still under 75 and within their
+      // conversion window, fill remaining bracket room with a conversion.
+      // We know the real ordinary income for this year now, so the bracket calculation is exact.
+      if (conv.enabled) {
+        const yConvDist = curYashpalAge >= conv.startY && curYashpalAge <= Math.min(conv.endY, 74);
+        const dConvDist = curDiptiAge   >= conv.startD && curDiptiAge   <= Math.min(conv.endD, 74);
+        if (yConvDist || dConvDist) {
+          // Real ordinary income already generated this year (before conversion)
+          const totalOrdIncomePreConv = total401kGross
+                                      + (ySsnAnnual + dSsnAnnual) * 0.85
+                                      + pensions;
+
+          let distMaxConv;
+          if (conv.bracketCeiling > 0) {
+            const taxableOrdAfterDed = Math.max(0, totalOrdIncomePreConv - deductionAmt);
+            convBracketRoom = Math.max(0, conv.bracketCeiling - taxableOrdAfterDed);
+            distMaxConv = convBracketRoom;
+          } else {
+            convBracketRoom = Infinity;
+            distMaxConv = conv.amt;
+          }
+
+          if (distMaxConv > 0) {
+            const totalPre = y401k + d401k;
+            const yShare   = totalPre > 0 ? y401k / totalPre : 0.5;
+            const yConv    = yConvDist ? Math.min(y401k, distMaxConv * yShare) : 0;
+            const dConv    = dConvDist ? Math.min(d401k, distMaxConv * (1 - yShare)) : 0;
+            convAmt        = yConv + dConv;
+
+            // Move money: 401k → Roth
+            y401k -= yConv; d401k -= dConv;
+            yRoth += yConv; dRoth += dConv;
+
+            // Incremental tax from conversion added on top of this year's income
+            const convOrdIncome  = totalOrdIncomePreConv + convAmt;
+            const cgGross        = drawJActual + otherReal;
+            const convTaxResult  = calcTax({ ordinaryIncome: convOrdIncome, capitalGainsGross: cgGross, married, stateTaxRate: stateTax, deductionAmt });
+            const baseTaxResult2 = calcTax({ ordinaryIncome: totalOrdIncomePreConv, capitalGainsGross: cgGross, married, stateTaxRate: stateTax, deductionAmt });
+            convTax              = convTaxResult.totalTax - baseTaxResult2.totalTax;
+            jTaxable            -= convTax;
+          }
+        }
+      }
+
+      // Grow remaining
+      y401k    *= (1 + rate); d401k    *= (1 + rate);
+      yRoth    *= (1 + rate); dRoth    *= (1 + rate);
+      yHSA     *= (1 + rate); dHSA     *= (1 + rate);
+      jTaxable *= (1 + rate);
+
+      rowDraws = { drawJ: drawJActual, drawY401, drawD401, drawYR, drawDR, drawYH, drawDH,
+                   yRmdForced, dRmdForced, yRmdMin, dRmdMin,
+                   totalWithdrawn, spendReal,
+                   ySsnAnnual, dSsnAnnual, pensions, otherReal,
+                   taxOnTaxable, taxOn401k, taxOnSsn, taxOnOther,
+                   fedTax, stateTaxAmt,
+                   totalTaxPaid, effectiveTaxRate };
+      // Note: convAmt / convTax are set on the outer let variables and pushed separately on row.
+    }
+
+    const total = y401k + yRoth + yHSA + d401k + dRoth + dHSA + jTaxable;
+    rows.push({
+      yr, curYashpalAge, curDiptiAge,
+      y401k, yRoth, yHSA,
+      d401k, dRoth, dHSA,
+      jTaxable, total,
+      phase: anyWorking ? 'Accumulation' : 'Distribution',
+      convAmt, convTax, convBracketRoom: conv.bracketCeiling > 0 ? convBracketRoom : null,
+      ...rowDraws
+    });
+  }
+  return rows;
+}
+
+// Snapshot at the year when last person retires
+function rowAtLastRet(proj) {
+  const lastRet = Math.max(num('y_retAge'), num('d_retAge'));
+  const found = proj.find(r => r.curYashpalAge >= num('y_retAge') && r.curDiptiAge >= num('d_retAge'));
+  return found || proj[proj.length - 1];
+}
+
+// ══════════════════════════════════════════════════
+//  Calculate
+// ══════════════════════════════════════════════════
+// Last calculated base projection — used by exportToExcel()
+let _lastProj = [];
+
+function calculate() {
+  const base = num('j_returnRate') / 100;
+  const cons = Math.max(0, base - 0.02);
+  const opt  = base + 0.02;
+
+  // Build Roth conversion config from sidebar inputs
+  const rothEnabled = sel('j_rothEnable') === 'yes';
+  const conv = rothEnabled ? {
+    enabled:        true,
+    startY:         num('j_rothStartY'),
+    endY:           num('j_rothEndY'),
+    startD:         num('j_rothStartD'),
+    endD:           num('j_rothEndD'),
+    amt:            num('j_rothAmt'),
+    bracketCeiling: parseFloat(sel('j_rothBracket')) || 0
+  } : { enabled: false };
+
+  const pBase     = project(base, conv);
+  const pCons     = project(cons, conv);
+  const pOpt      = project(opt,  conv);
+  const pNoConv   = rothEnabled ? project(base, { enabled: false }) : null;
+
+  _lastProj = pBase; // store for export
+
+  const bRet = rowAtLastRet(pBase);
+  const cRet = rowAtLastRet(pCons);
+  const oRet = rowAtLastRet(pOpt);
+
+  const ySsnAge = parseInt(sel('y_ssnAge'));
+  const dSsnAge = parseInt(sel('d_ssnAge'));
+  const ySsnMo  = { 62:num('y_ssn62'), 65:num('y_ssn65'), 67:num('y_ssn67'), 70:num('y_ssn70') };
+  const dSsnMo  = { 62:num('d_ssn62'), 65:num('d_ssn65'), 67:num('d_ssn67'), 70:num('d_ssn70') };
+  const ySsnAnnual = (ySsnMo[ySsnAge] || 0) * 12;
+  const dSsnAnnual = (dSsnMo[dSsnAge] || 0) * 12;
+  const totalSsnAnnual = ySsnAnnual + dSsnAnnual;
+
+  renderSummaryCards(bRet, pBase, totalSsnAnnual);
+  renderScenarios(cRet, bRet, oRet, cons, base, opt, pCons, pBase, pOpt);
+  renderChart(pBase, pCons, pOpt);
+  renderBreakdown(bRet);
+  renderSSN(ySsnMo, dSsnMo, ySsnAge, dSsnAge);
+  renderWithdrawal(bRet, totalSsnAnnual);
+  renderYearTable(pBase);
+  renderRothConversion(pBase, pNoConv);
+
+  saveToStorage();
+  el('lastSaved').textContent = 'Updated ' + new Date().toLocaleTimeString();
+
+  // ── Sidebar result summary ──
+  const finalRow  = pBase[pBase.length - 1];
+  const finalVal  = finalRow.total;
+  const finalAge  = finalRow.curYashpalAge;
+  const sr = el('sidebarResult');
+  const sv = el('sidebarResultValue');
+  const ss = el('sidebarResultSub');
+  sv.textContent = fmtK(finalVal);
+  sv.style.color = finalVal > 0 ? '#1a7f37' : '#cf222e';
+  ss.textContent = `at Yashpal age ${finalAge}  •  ${finalVal > 0 ? 'surplus' : 'shortfall'}`;
+  sr.style.display = '';
+}
+
+// ══════════════════════════════════════════════════
+//  Summary Cards
+// ══════════════════════════════════════════════════
+function renderSummaryCards(atRet, proj, totalSsnAnnual) {
+  const nest        = atRet.total;
+  const endRow      = proj[proj.length - 1];
+  const monthly4pct = (nest * 0.04 + totalSsnAnnual) / 12;
+  const retSpend    = num('j_retSpend');
+  const ready       = monthly4pct * 12 >= retSpend;
+  const yrsToRetY   = Math.max(0, num('y_retAge') - num('y_age'));
+  const yrsToRetD   = Math.max(0, num('d_retAge') - num('d_age'));
+
+  el('summaryCards').innerHTML = `
+    <div class="card">
+      <div class="clabel">Yashpal Retires In</div>
+      <div class="cvalue">${yrsToRetY} yrs</div>
+      <div class="csub">Age ${num('y_age')} → ${num('y_retAge')}</div>
+    </div>
+    <div class="card">
+      <div class="clabel">Dipti Retires In</div>
+      <div class="cvalue">${yrsToRetD} yrs</div>
+      <div class="csub">Age ${num('d_age')} → ${num('d_retAge')}</div>
+    </div>
+    <div class="card">
+      <div class="clabel">Combined Nest Egg</div>
+      <div class="cvalue">${fmtK(nest)}</div>
+      <div class="csub">At full retirement</div>
+    </div>
+    <div class="card ${ready ? 'good' : 'warn'}">
+      <div class="clabel">Monthly Income (4% + SSN)</div>
+      <div class="cvalue">${fmtK(monthly4pct)}</div>
+      <div class="csub">${ready ? '✓ Covers spend' : '⚠ Below target'}</div>
+    </div>
+    <div class="card">
+      <div class="clabel">Combined SSN / mo</div>
+      <div class="cvalue">${fmtK(totalSsnAnnual / 12)}</div>
+      <div class="csub">Both at chosen claim ages</div>
+    </div>
+    <div class="card ${endRow.total > 0 ? 'good' : 'bad'}">
+      <div class="clabel">Combined Estate</div>
+      <div class="cvalue">${fmtK(endRow.total)}</div>
+      <div class="csub">${endRow.total > 0 ? 'Surplus' : 'Shortfall'}</div>
+    </div>
+  `;
+}
+
+// ══════════════════════════════════════════════════
+//  Scenarios
+// ══════════════════════════════════════════════════
+function renderScenarios(cons, base, opt, rCons, rBase, rOpt, pCons, pBase, pOpt) {
+  const end = p => p[p.length-1];
+  const detail = (r, p, rate) => `
+    <div class="sdetail">
+      Return: <strong>${pct(rate*100)}</strong><br>
+      At Full Retirement: <strong>${fmtK(r.total)}</strong><br>
+      Final Estate: <strong>${fmtK(end(p).total)}</strong>
+    </div>`;
+  el('scenarios').innerHTML = `
+    <div class="scenario conservative">
+      <div class="stitle">Conservative</div>
+      <div class="srate">Return ${pct(rCons*100)}</div>
+      <div class="snest">${fmtK(cons.total)}</div>
+      ${detail(cons, pCons, rCons)}
+    </div>
+    <div class="scenario base">
+      <div class="stitle">Base</div>
+      <div class="srate">Return ${pct(rBase*100)}</div>
+      <div class="snest">${fmtK(base.total)}</div>
+      ${detail(base, pBase, rBase)}
+    </div>
+    <div class="scenario optimistic">
+      <div class="stitle">Optimistic</div>
+      <div class="srate">Return ${pct(rOpt*100)}</div>
+      <div class="snest">${fmtK(opt.total)}</div>
+      ${detail(opt, pOpt, rOpt)}
+    </div>`;
+}
+
+// ══════════════════════════════════════════════════
+//  SVG Chart
+// ══════════════════════════════════════════════════
+function renderChart(pBase, pCons, pOpt) {
+  const W=720,H=300,PL=72,PR=20,PT=20,PB=50;
+  const cW=W-PL-PR, cH=H-PT-PB;
+  const allTot = [...pBase,...pCons,...pOpt].map(r=>r.total);
+  const maxVal = Math.max(...allTot)*1.05;
+  const minVal = Math.min(0,...allTot);
+  const maxYr  = pBase.length - 1;
+
+  const xS = yr => PL + (yr / maxYr) * cW;
+  const yS = v  => PT + cH - ((v - minVal) / (maxVal - minVal)) * cH;
+
+  const line = (proj, color) => {
+    const pts = proj.map(r => `${xS(r.yr).toFixed(1)},${yS(r.total).toFixed(1)}`).join(' ');
+    return `<polyline fill="none" stroke="${color}" stroke-width="2" points="${pts}"/>`;
+  };
+
+  // Y grid
+  let yLabels = '';
+  for (let i=0; i<=5; i++) {
+    const v = minVal + (maxVal-minVal)*i/5;
+    const y = yS(v);
+    yLabels += `<line x1="${PL}" y1="${y.toFixed(1)}" x2="${PL+cW}" y2="${y.toFixed(1)}" stroke="#e5e7eb" stroke-width="1"/>
+      <text x="${PL-5}" y="${(y+4).toFixed(1)}" text-anchor="end" font-size="10" fill="#57606a">${fmtK(v)}</text>`;
+  }
+
+  // X axis — show ages for Yashpal (primary)
+  let xLabels = '';
+  const yStart = num('y_age');
+  for (let i=0; i<=maxYr; i+=5) {
+    const x = xS(i);
+    xLabels += `<text x="${x.toFixed(1)}" y="${(PT+cH+16).toFixed(1)}" text-anchor="middle" font-size="10" fill="#57606a">${yStart+i}</text>`;
+  }
+
+  // Retirement markers
+  const yRetYr = num('y_retAge') - num('y_age');
+  const dRetYr = num('d_retAge') - num('d_age');
+  const rxY = xS(Math.max(0,Math.min(yRetYr,maxYr)));
+  const rxD = xS(Math.max(0,Math.min(dRetYr,maxYr)));
+  const markers = `
+    <line x1="${rxY.toFixed(1)}" y1="${PT}" x2="${rxY.toFixed(1)}" y2="${PT+cH}" stroke="#3b82d4" stroke-width="1.5" stroke-dasharray="5,3"/>
+    <text x="${(rxY+3).toFixed(1)}" y="${PT+12}" font-size="9" fill="#3b82d4">Y ret.</text>
+    <line x1="${rxD.toFixed(1)}" y1="${PT}" x2="${rxD.toFixed(1)}" y2="${PT+cH}" stroke="#7c5cd8" stroke-width="1.5" stroke-dasharray="5,3"/>
+    <text x="${(rxD+3).toFixed(1)}" y="${PT+22}" font-size="9" fill="#7c5cd8">D ret.</text>`;
+
+  const legend = `
+    <circle cx="${PL}" cy="${PT+cH+36}" r="4" fill="#cf222e"/>
+    <text x="${PL+8}" y="${PT+cH+40}" font-size="10" fill="#57606a">Conservative</text>
+    <circle cx="${PL+100}" cy="${PT+cH+36}" r="4" fill="#3b82d4"/>
+    <text x="${PL+108}" y="${PT+cH+40}" font-size="10" fill="#57606a">Base</text>
+    <circle cx="${PL+150}" cy="${PT+cH+36}" r="4" fill="#1a7f37"/>
+    <text x="${PL+158}" y="${PT+cH+40}" font-size="10" fill="#57606a">Optimistic</text>
+    <text x="${W/2}" y="${PT+cH+40}" text-anchor="middle" font-size="10" fill="#8b949e">Yashpal's Age</text>`;
+
+  el('chartWrap').innerHTML = `<svg class="chart" viewBox="0 0 ${W} ${H+30}" xmlns="http://www.w3.org/2000/svg">
+    ${yLabels}${xLabels}${markers}
+    ${line(pCons,'#cf222e')}${line(pBase,'#3b82d4')}${line(pOpt,'#1a7f37')}
+    ${legend}
+  </svg>`;
+}
+
+// ══════════════════════════════════════════════════
+//  Account Breakdown
+// ══════════════════════════════════════════════════
+function renderBreakdown(atRet) {
+  const yTotal = atRet.y401k + atRet.yRoth + atRet.yHSA;
+  const dTotal = atRet.d401k + atRet.dRoth + atRet.dHSA;
+  const grand  = yTotal + dTotal + atRet.jTaxable;
+
+  el('breakdown').innerHTML = `
+    <div class="person-accts">
+      <div>
+        <h4>Yashpal <span style="font-weight:400;font-size:11px;">${fmtK(yTotal)}</span></h4>
+        <div class="acct-grid">
+          <div class="acct"><div class="aname">401K/IRA</div><div class="abal">${fmtK(atRet.y401k)}</div><div class="anote">Pre-tax</div></div>
+          <div class="acct"><div class="aname">Roth IRA</div><div class="abal">${fmtK(atRet.yRoth)}</div><div class="anote">Tax-free</div></div>
+          <div class="acct"><div class="aname">HSA</div><div class="abal">${fmtK(atRet.yHSA)}</div><div class="anote">Triple tax</div></div>
+        </div>
+      </div>
+      <div>
+        <h4 class="dipti">Dipti <span style="font-weight:400;font-size:11px;">${fmtK(dTotal)}</span></h4>
+        <div class="acct-grid">
+          <div class="acct"><div class="aname">401K/IRA</div><div class="abal">${fmtK(atRet.d401k)}</div><div class="anote">Pre-tax</div></div>
+          <div class="acct"><div class="aname">Roth IRA</div><div class="abal">${fmtK(atRet.dRoth)}</div><div class="anote">Tax-free</div></div>
+          <div class="acct"><div class="aname">HSA</div><div class="abal">${fmtK(atRet.dHSA)}</div><div class="anote">Triple tax</div></div>
+        </div>
+      </div>
+    </div>
+    <div style="margin-top:12px;padding-top:12px;border-top:1px solid #e5e7eb;">
+      <div class="acct-grid">
+        <div class="acct"><div class="aname">Joint Taxable</div><div class="abal">${fmtK(atRet.jTaxable)}</div><div class="anote">Capital gains rate</div></div>
+        <div class="acct" style="border:1px solid #1e3a5f;"><div class="aname">Total Combined</div><div class="abal" style="color:#1e3a5f;">${fmtK(grand)}</div><div class="anote">All accounts</div></div>
+      </div>
+    </div>`;
+}
+
+// ══════════════════════════════════════════════════
+//  SSN Comparison — side by side
+// ══════════════════════════════════════════════════
+function renderSSN(ySsn, dSsn, yChosen, dChosen) {
+  const ages = [62, 65, 67, 70];
+  const lifeY = num('y_lifeExp');
+  const lifeD = num('d_lifeExp');
+
+  const tbl = (ssn, chosen, life, name, cls) => `
+    <div>
+      <table>
+        <thead><tr><th colspan="3">${name} SSN <span class="tag ${cls}">${cls === 'y' ? 'Yashpal' : 'Dipti'}</span></th></tr>
+          <tr><th>Claim Age</th><th>Monthly</th><th>Lifetime to ${life}</th></tr></thead>
+        <tbody>
+          ${ages.map(a => `<tr class="${a===chosen?'hl':''}">
+            <td>${a}${a===chosen?' <span class="tag '+(cls==='y'?'y':'d')+'">Plan</span>':''}</td>
+            <td>${fmt(ssn[a]||0)}</td>
+            <td>${fmtK((ssn[a]||0)*12*(life-a))}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
+
+  el('ssnGrid').innerHTML =
+    tbl(ySsn, yChosen, lifeY, 'Yashpal', 'y') +
+    tbl(dSsn, dChosen, lifeD, 'Dipti', 'd');
+}
+
+// ══════════════════════════════════════════════════
+//  Withdrawal Plan
+// ══════════════════════════════════════════════════
+function renderWithdrawal(atRet, totalSsnAnnual) {
+  const nest      = atRet.total;
+  const retSpend  = num('j_retSpend');
+  const inflRate  = num('j_inflRate') / 100;
+  const monthly4  = (nest * 0.04) / 12;
+  const monthly3  = (nest * 0.03) / 12;
+  const ssnMo     = totalSsnAnnual / 12;
+  const spendMo   = retSpend / 12;
+  const gap       = monthly4 + ssnMo - spendMo;
+  const inflAt10  = retSpend * Math.pow(1 + inflRate, 10);
+
+  el('withdrawalGrid').innerHTML = `
+    <div class="wcard"><div class="wl">Portfolio 4% / mo</div><div class="wv">${fmtK(monthly4)}</div><div class="ws">Sustainable withdrawal</div></div>
+    <div class="wcard"><div class="wl">Portfolio 3% Safe / mo</div><div class="wv">${fmtK(monthly3)}</div><div class="ws">Conservative withdrawal</div></div>
+    <div class="wcard"><div class="wl">Combined SSN / mo</div><div class="wv">${fmtK(ssnMo)}</div><div class="ws">Both spouses at claim ages</div></div>
+    <div class="wcard"><div class="wl">Total Income (4%+SSN) / mo</div><div class="wv">${fmtK(monthly4+ssnMo)}</div><div class="ws">Combined monthly</div></div>
+    <div class="wcard"><div class="wl">Desired Spend / mo</div><div class="wv">${fmtK(spendMo)}</div><div class="ws">Today's dollars</div></div>
+    <div class="wcard"><div class="wl">${gap>=0?'Monthly Surplus':'Monthly Gap'}</div>
+      <div class="wv" style="color:${gap>=0?'#1a7f37':'#cf222e'}">${fmtK(Math.abs(gap))}</div>
+      <div class="ws">vs desired spend (4%+SSN)</div></div>
+    <div class="wcard"><div class="wl">Spend at Ret+10yr / mo</div><div class="wv">${fmtK(inflAt10/12)}</div><div class="ws">Inflation adjusted</div></div>
+  `;
+}
+
+// ══════════════════════════════════════════════════
+//  Roth Conversion Analysis
+// ══════════════════════════════════════════════════
+function renderRothConversion(proj, projNoConv) {
+  const section = el('rothSection');
+  const content = el('rothContent');
+  const enabled = sel('j_rothEnable') === 'yes';
+  section.style.display = enabled ? '' : 'none';
+  if (!enabled || !projNoConv) { content.innerHTML = ''; return; }
+
+  // ── Bracket fill guide: year-by-year conversion schedule ──
+  const convRows = proj.filter(r => r.phase === 'Accumulation' && (r.convAmt || 0) > 0);
+  const bracketLabel = sel('j_rothBracket') === '0'
+    ? 'Fixed amount (no bracket limit)'
+    : 'Fill to bracket ceiling';
+  const guideRows = convRows.map(r => `<tr>
+    <td>${r.curYashpalAge}</td>
+    <td>${r.curDiptiAge}</td>
+    <td style="color:#7c5cd8;font-weight:600;">${fmtK(r.convAmt)}</td>
+    <td style="color:#b35000;">${fmtK(r.convTax)}</td>
+    <td style="color:#8b949e;">${r.convBracketRoom != null ? fmtK(r.convBracketRoom) : '—'}</td>
+  </tr>`).join('');
+
+  const guideSection = convRows.length > 0 ? `
+    <p style="font-size:12px;color:#57606a;margin-bottom:8px;">
+      Strategy: <strong>${bracketLabel}</strong> &nbsp;|&nbsp;
+      Tax paid from joint taxable account each conversion year.
+    </p>
+    <div style="max-height:240px;overflow-y:auto;border:1px solid #e5e7eb;border-radius:6px;">
+      <table>
+        <thead><tr>
+          <th>Y Age</th><th>D Age</th>
+          <th style="color:#7c5cd8;">Conv. Amount</th>
+          <th style="color:#b35000;">Conv. Tax Paid</th>
+          <th>Bracket Room</th>
+        </tr></thead>
+        <tbody>${guideRows}</tbody>
+      </table>
+    </div>` : `<p style="color:#8b949e;font-size:12px;">No conversions occurred — check age windows and 401K balance.</p>`;
+
+  // ── Before / After comparison at age 75 and at life expectancy ──
+  const yRet75 = proj.find(r => r.curYashpalAge >= 75) || proj[proj.length-1];
+  const nc75   = projNoConv.find(r => r.curYashpalAge >= 75) || projNoConv[projNoConv.length-1];
+  const last   = proj[proj.length-1];
+  const ncLast = projNoConv[projNoConv.length-1];
+
+  const sumTaxDist  = p => p.filter(r => r.phase === 'Distribution').reduce((a,r) => a+(r.totalTaxPaid||0), 0);
+  const sumConvTax  = p => p.reduce((a,r) => a+(r.convTax||0), 0);
+  const lifetimeTax = p => sumTaxDist(p) + sumConvTax(p);
+
+  const cmp = (withVal, noVal, lowerBetter) => {
+    const diff = withVal - noVal;
+    const better = lowerBetter ? diff < 0 : diff > 0;
+    const color  = better ? '#1a7f37' : (diff === 0 ? '#57606a' : '#cf222e');
+    const sign   = diff >= 0 ? '+' : '';
+    return `<span style="color:${color};font-size:11px;font-weight:600;">&nbsp;${sign}${fmtK(diff)}</span>`;
+  };
+
+  const rows = [
+    { label: '401K/IRA balance at age 75 (Y)',  w: yRet75.y401k,  n: nc75.y401k,  low: true  },
+    { label: 'Roth balance at age 75 (Y+D)',    w: yRet75.yRoth+yRet75.dRoth, n: nc75.yRoth+nc75.dRoth, low: false },
+    { label: '401K/IRA balance at age 75 (D)',  w: yRet75.d401k,  n: nc75.d401k,  low: true  },
+    { label: 'Taxable acct at age 75',          w: yRet75.jTaxable, n: nc75.jTaxable, low: false },
+    { label: 'Total portfolio at age 75',       w: yRet75.total,  n: nc75.total,  low: false },
+    { label: 'Lifetime tax paid (all years)',   w: lifetimeTax(proj), n: lifetimeTax(projNoConv), low: true  },
+    { label: 'Lifetime conv. tax paid',         w: sumConvTax(proj), n: 0,          low: true  },
+    { label: 'Final estate',                    w: last.total,    n: ncLast.total, low: false },
+  ];
+
+  const cmpRows = rows.map(r => `<tr>
+    <td>${r.label}</td>
+    <td style="font-weight:600;color:#7c5cd8;">${fmtK(r.w)}</td>
+    <td style="color:#57606a;">${fmtK(r.n)}</td>
+    <td>${cmp(r.w, r.n, r.low)}</td>
+  </tr>`).join('');
+
+  content.innerHTML = `
+    <h4 style="font-size:13px;font-weight:700;color:#7c5cd8;margin-bottom:10px;">Conversion Schedule</h4>
+    ${guideSection}
+    <h4 style="font-size:13px;font-weight:700;color:#1e3a5f;margin:18px 0 10px;">Before vs After Conversion</h4>
+    <table>
+      <thead><tr>
+        <th>Metric</th>
+        <th style="color:#7c5cd8;">With Conversion</th>
+        <th>No Conversion</th>
+        <th>Difference</th>
+      </tr></thead>
+      <tbody>${cmpRows}</tbody>
+    </table>
+  `;
+}
+
+// ══════════════════════════════════════════════════
+//  Year-by-Year Table
+// ══════════════════════════════════════════════════
+function renderYearTable(proj) {
+  const head = `<thead>
+    <tr>
+      <th rowspan="2">Y Age</th>
+      <th rowspan="2">D Age</th>
+      <th rowspan="2">Phase</th>
+      <th rowspan="2">Target Spend<br><span style="font-weight:400;text-transform:none;">(infl. adj.)</span></th>
+      <th rowspan="2">SSN + Other<br><span style="font-weight:400;text-transform:none;">(income)</span></th>
+      <th colspan="2" style="text-align:center;background:#f5f0ff;color:#5b21b6;">← Roth Conv →</th>
+      <th colspan="7" style="text-align:center;background:#fff7ed;color:#92400e;">← Voluntary Withdrawals →</th>
+      <th colspan="2" style="text-align:center;background:#fdf2f8;color:#7e1d6b;">RMD Forced</th>
+      <th rowspan="2">Total<br>Withdrawn</th>
+      <th colspan="4" style="text-align:center;background:#fef9c3;color:#713f12;">← Tax by Source →</th>
+      <th rowspan="2" style="background:#fef0c3;color:#713f12;">Fed Tax<br>Total</th>
+      <th rowspan="2" style="background:#fef0c3;color:#713f12;">State Tax<br>(CA 10.5%)</th>
+      <th rowspan="2" style="background:#fde68a;color:#713f12;border-left:2px solid #d97706;">Total Tax<br>Paid</th>
+      <th rowspan="2">Eff. Tax<br>Rate</th>
+      <th colspan="7" style="text-align:center;background:#f0f9ff;color:#075985;">← Ending Balances →</th>
+      <th rowspan="2">Total<br>Portfolio</th>
+    </tr>
+    <tr>
+      <th style="background:#f5f0ff;color:#5b21b6;">Conv Amt</th>
+      <th style="background:#f5f0ff;color:#5b21b6;">Conv Tax</th>
+      <th style="background:#fff7ed;">Joint Taxable</th>
+      <th style="background:#fff7ed;">Y 401K/IRA</th>
+      <th style="background:#fff7ed;">D 401K/IRA</th>
+      <th style="background:#fff7ed;">Y Roth</th>
+      <th style="background:#fff7ed;">D Roth</th>
+      <th style="background:#fff7ed;">Y HSA</th>
+      <th style="background:#fff7ed;">D HSA</th>
+      <th style="background:#fdf2f8;">Y RMD</th>
+      <th style="background:#fdf2f8;">D RMD</th>
+      <th style="background:#fef9c3;">Cap Gains<br>(Taxable)</th>
+      <th style="background:#fef9c3;">Ord. Income<br>(401K/RMD)</th>
+      <th style="background:#fef9c3;">On SSN</th>
+      <th style="background:#fef9c3;">On Other<br>Income</th>
+      <th style="background:#f0f9ff;">Joint Taxable</th>
+      <th style="background:#f0f9ff;">Y 401K/IRA</th>
+      <th style="background:#f0f9ff;">D 401K/IRA</th>
+      <th style="background:#f0f9ff;">Y Roth</th>
+      <th style="background:#f0f9ff;">D Roth</th>
+      <th style="background:#f0f9ff;">Y HSA</th>
+      <th style="background:#f0f9ff;">D HSA</th>
+    </tr>
+  </thead>`;
+
+  const drawCell = v => v > 0
+    ? `<td style="color:#b35000;background:#fff7ed;">${fmtK(v)}</td>`
+    : `<td style="color:#d0d7de;">—</td>`;
+  const rmdCell  = (v, min) => {
+    if (min <= 0 || min === Infinity) return `<td style="color:#d0d7de;">—</td>`;
+    if (v > 0) return `<td style="color:#7e1d6b;background:#fdf2f8;font-weight:600;">${fmtK(v)}<br><span style="font-size:10px;font-weight:400;">req: ${fmtK(min)}</span></td>`;
+    return `<td style="color:#d0d7de;">—<br><span style="font-size:10px;color:#57606a;">req: ${fmtK(min)}</span></td>`;
+  };
+  const taxCell  = v => v > 0
+    ? `<td style="color:#713f12;background:#fef9c3;">${fmtK(v)}</td>`
+    : `<td style="color:#d0d7de;">—</td>`;
+
+  const body = proj.map(r => {
+    const isDistrib = r.phase === 'Distribution';
+    const fixedIncome = isDistrib
+      ? fmtK((r.ySsnAnnual||0) + (r.dSsnAnnual||0) + (r.pensions||0) + (r.otherReal||0))
+      : '—';
+    const dash = `<td style="color:#d0d7de;">—</td>`;
+    const effRate = isDistrib && (r.effectiveTaxRate||0) > 0
+      ? `<td style="background:#fef9c3;font-weight:600;color:#713f12;">${(r.effectiveTaxRate*100).toFixed(1)}%</td>`
+      : dash;
+    const convAmtCell  = (r.convAmt||0) > 0
+      ? `<td style="color:#5b21b6;background:#f5f0ff;font-weight:600;">${fmtK(r.convAmt)}</td>`
+      : dash;
+    const convTaxCell  = (r.convTax||0) > 0
+      ? `<td style="color:#7c5cd8;background:#f5f0ff;">${fmtK(r.convTax)}</td>`
+      : dash;
+    return `<tr>
+      <td>${r.curYashpalAge}</td>
+      <td>${r.curDiptiAge}</td>
+      <td><span style="font-size:11px;padding:1px 6px;border-radius:10px;font-weight:600;
+        background:${isDistrib?'#fff7ed':'#f0fdf4'};
+        color:${isDistrib?'#92400e':'#166534'};">${r.phase}</span></td>
+      <td>${isDistrib ? fmtK(r.spendReal) : '—'}</td>
+      <td>${fixedIncome}</td>
+      ${convAmtCell}
+      ${convTaxCell}
+      ${isDistrib ? drawCell(r.drawJ)    : dash}
+      ${isDistrib ? drawCell(r.drawY401) : dash}
+      ${isDistrib ? drawCell(r.drawD401) : dash}
+      ${isDistrib ? drawCell(r.drawYR)   : dash}
+      ${isDistrib ? drawCell(r.drawDR)   : dash}
+      ${isDistrib ? drawCell(r.drawYH)   : dash}
+      ${isDistrib ? drawCell(r.drawDH)   : dash}
+      ${isDistrib ? rmdCell(r.yRmdForced||0, r.yRmdMin||0) : dash}
+      ${isDistrib ? rmdCell(r.dRmdForced||0, r.dRmdMin||0) : dash}
+      <td><strong>${isDistrib ? fmtK(r.totalWithdrawn) : '—'}</strong></td>
+      ${isDistrib ? taxCell(r.taxOnTaxable||0) : dash}
+      ${isDistrib ? taxCell(r.taxOn401k||0)    : dash}
+      ${isDistrib ? taxCell(r.taxOnSsn||0)     : dash}
+      ${isDistrib ? taxCell(r.taxOnOther||0)   : dash}
+      <td style="${isDistrib?'background:#fef9c3;font-weight:600;color:#713f12;':''}">
+        ${isDistrib ? fmtK(r.fedTax||0) : '—'}</td>
+      <td style="${isDistrib?'background:#fef9c3;font-weight:600;color:#713f12;':''}">
+        ${isDistrib ? fmtK(r.stateTaxAmt||0) : '—'}</td>
+      <td style="${isDistrib?'background:#fef9c3;font-weight:700;border-left:2px solid #d97706;':''}">
+        ${isDistrib ? fmtK(r.totalTaxPaid||0) : '—'}</td>
+      ${effRate}
+      <td style="background:#f0f9ff;">${fmtK(r.jTaxable)}</td>
+      <td style="background:#f0f9ff;">${fmtK(r.y401k)}</td>
+      <td style="background:#f0f9ff;">${fmtK(r.d401k)}</td>
+      <td style="background:#f0f9ff;">${fmtK(r.yRoth)}</td>
+      <td style="background:#f0f9ff;">${fmtK(r.dRoth)}</td>
+      <td style="background:#f0f9ff;">${fmtK(r.yHSA)}</td>
+      <td style="background:#f0f9ff;">${fmtK(r.dHSA)}</td>
+      <td style="background:#f0f9ff;"><strong>${fmtK(r.total)}</strong></td>
+    </tr>`;
+  }).join('');
+
+  // ── Totals row — sum flow columns, show final balances for point-in-time columns ──
+  const dist = proj.filter(r => r.phase === 'Distribution');
+  const sum  = k => dist.reduce((a, r) => a + (r[k] || 0), 0);
+  const last = proj[proj.length - 1];
+  const totalTaxPaidAll   = sum('totalTaxPaid');
+  const totalWithdrawnAll = sum('totalWithdrawn');
+  const totalSpendAll     = sum('spendReal');
+  const totalFixedAll     = dist.reduce((a,r) => a + (r.ySsnAnnual||0)+(r.dSsnAnnual||0)+(r.pensions||0)+(r.otherReal||0), 0);
+  const avgEffRate        = totalTaxPaidAll > 0
+    ? dist.reduce((a,r) => a + (r.totalTaxPaid||0) * (r.effectiveTaxRate||0), 0) / totalTaxPaidAll
+    : 0;
+  const ts = `border-top:2px solid #1e3a5f;background:#f0f4fa;font-weight:700;font-size:11px;`;
+
+  const totalConvAmt = proj.reduce((a,r) => a+(r.convAmt||0), 0);
+  const totalConvTax = proj.reduce((a,r) => a+(r.convTax||0), 0);
+
+  const totalsRow = `<tr style="${ts}">
+    <td colspan="3" style="${ts}color:#1e3a5f;">TOTALS / FINAL</td>
+    <td style="${ts}">${fmtK(totalSpendAll)}</td>
+    <td style="${ts}">${fmtK(totalFixedAll)}</td>
+    <td style="${ts}color:#5b21b6;">${fmtK(totalConvAmt)}</td>
+    <td style="${ts}color:#7c5cd8;">${fmtK(totalConvTax)}</td>
+    <td style="${ts}color:#b35000;">${fmtK(sum('drawJ'))}</td>
+    <td style="${ts}color:#b35000;">${fmtK(sum('drawY401'))}</td>
+    <td style="${ts}color:#b35000;">${fmtK(sum('drawD401'))}</td>
+    <td style="${ts}color:#b35000;">${fmtK(sum('drawYR'))}</td>
+    <td style="${ts}color:#b35000;">${fmtK(sum('drawDR'))}</td>
+    <td style="${ts}color:#b35000;">${fmtK(sum('drawYH'))}</td>
+    <td style="${ts}color:#b35000;">${fmtK(sum('drawDH'))}</td>
+    <td style="${ts}color:#7e1d6b;">${fmtK(sum('yRmdForced'))}</td>
+    <td style="${ts}color:#7e1d6b;">${fmtK(sum('dRmdForced'))}</td>
+    <td style="${ts}">${fmtK(totalWithdrawnAll)}</td>
+    <td style="${ts}color:#713f12;">${fmtK(sum('taxOnTaxable'))}</td>
+    <td style="${ts}color:#713f12;">${fmtK(sum('taxOn401k'))}</td>
+    <td style="${ts}color:#713f12;">${fmtK(sum('taxOnSsn'))}</td>
+    <td style="${ts}color:#713f12;">${fmtK(sum('taxOnOther'))}</td>
+    <td style="${ts}color:#713f12;font-weight:700;">${fmtK(sum('fedTax'))}</td>
+    <td style="${ts}color:#713f12;font-weight:700;">${fmtK(sum('stateTaxAmt'))}</td>
+    <td style="${ts}color:#713f12;font-weight:700;border-left:2px solid #d97706;">${fmtK(totalTaxPaidAll)}</td>
+    <td style="${ts}color:#713f12;">${(avgEffRate*100).toFixed(1)}% avg</td>
+    <td style="${ts}background:#e8f0fb;">${fmtK(last.jTaxable)}</td>
+    <td style="${ts}background:#e8f0fb;">${fmtK(last.y401k)}</td>
+    <td style="${ts}background:#e8f0fb;">${fmtK(last.d401k)}</td>
+    <td style="${ts}background:#e8f0fb;">${fmtK(last.yRoth)}</td>
+    <td style="${ts}background:#e8f0fb;">${fmtK(last.dRoth)}</td>
+    <td style="${ts}background:#e8f0fb;">${fmtK(last.yHSA)}</td>
+    <td style="${ts}background:#e8f0fb;">${fmtK(last.dHSA)}</td>
+    <td style="${ts}background:#e8f0fb;">${fmtK(last.total)}</td>
+  </tr>`;
+
+  el('yearTable').innerHTML = head + `<tbody>${body}</tbody><tfoot>${totalsRow}</tfoot>`;
+}
+
+// ══════════════════════════════════════════════════
+//  Excel Export — SpreadsheetML (opens natively in Excel)
+// ══════════════════════════════════════════════════
+function exportToExcel() {
+  if (!_lastProj.length) { alert('Run Calculate first.'); return; }
+
+  const n = v => (v == null || v === undefined) ? '' : Math.round(v);
+
+  // ── Column definitions ──
+  const COLS = [
+    { h: 'Yashpal Age',         v: r => r.curYashpalAge },
+    { h: 'Dipti Age',           v: r => r.curDiptiAge   },
+    { h: 'Phase',               v: r => r.phase         },
+    { h: 'Target Spend (Infl.Adj.)', v: r => r.phase === 'Distribution' ? n(r.spendReal)       : '' },
+    { h: 'SSN + Other Income',  v: r => r.phase === 'Distribution'
+        ? n((r.ySsnAnnual||0)+(r.dSsnAnnual||0)+(r.pensions||0)+(r.otherReal||0)) : '' },
+    // voluntary draws
+    { h: 'Draw - Joint Taxable',v: r => r.phase === 'Distribution' ? n(r.drawJ)    : '' },
+    { h: 'Draw - Y 401K/IRA',   v: r => r.phase === 'Distribution' ? n(r.drawY401) : '' },
+    { h: 'Draw - D 401K/IRA',   v: r => r.phase === 'Distribution' ? n(r.drawD401) : '' },
+    { h: 'Draw - Y Roth',       v: r => r.phase === 'Distribution' ? n(r.drawYR)   : '' },
+    { h: 'Draw - D Roth',       v: r => r.phase === 'Distribution' ? n(r.drawDR)   : '' },
+    { h: 'Draw - Y HSA',        v: r => r.phase === 'Distribution' ? n(r.drawYH)   : '' },
+    { h: 'Draw - D HSA',        v: r => r.phase === 'Distribution' ? n(r.drawDH)   : '' },
+    // Roth conversions
+    { h: 'Conv Amount',         v: r => (r.convAmt||0) > 0 ? n(r.convAmt) : '' },
+    { h: 'Conv Tax Paid',       v: r => (r.convTax||0) > 0 ? n(r.convTax) : '' },
+    // RMD forced
+    { h: 'RMD Required - Y',    v: r => r.phase === 'Distribution' && (r.yRmdMin||0) < Infinity && (r.yRmdMin||0) > 0 ? n(r.yRmdMin)    : '' },
+    { h: 'RMD Required - D',    v: r => r.phase === 'Distribution' && (r.dRmdMin||0) < Infinity && (r.dRmdMin||0) > 0 ? n(r.dRmdMin)    : '' },
+    { h: 'RMD Forced Extra - Y',v: r => r.phase === 'Distribution' ? n(r.yRmdForced||0) : '' },
+    { h: 'RMD Forced Extra - D',v: r => r.phase === 'Distribution' ? n(r.dRmdForced||0) : '' },
+    { h: 'Total Withdrawn',     v: r => r.phase === 'Distribution' ? n(r.totalWithdrawn) : '' },
+    // taxes
+    { h: 'Tax - Cap Gains (Taxable)',  v: r => r.phase === 'Distribution' ? n(r.taxOnTaxable||0) : '' },
+    { h: 'Tax - Ord Income (401K/RMD)',v: r => r.phase === 'Distribution' ? n(r.taxOn401k||0)    : '' },
+    { h: 'Tax - On SSN',               v: r => r.phase === 'Distribution' ? n(r.taxOnSsn||0)     : '' },
+    { h: 'Tax - On Other Income',      v: r => r.phase === 'Distribution' ? n(r.taxOnOther||0)   : '' },
+    { h: 'Federal Tax',                v: r => r.phase === 'Distribution' ? n(r.fedTax||0)       : '' },
+    { h: 'State Tax (CA)',             v: r => r.phase === 'Distribution' ? n(r.stateTaxAmt||0)  : '' },
+    { h: 'Total Tax Paid',             v: r => r.phase === 'Distribution' ? n(r.totalTaxPaid||0) : '' },
+    { h: 'Effective Tax Rate (%)',     v: r => r.phase === 'Distribution' ? +((r.effectiveTaxRate||0)*100).toFixed(2) : '' },
+    // ending balances
+    { h: 'Bal - Joint Taxable', v: r => n(r.jTaxable) },
+    { h: 'Bal - Y 401K/IRA',    v: r => n(r.y401k)    },
+    { h: 'Bal - D 401K/IRA',    v: r => n(r.d401k)    },
+    { h: 'Bal - Y Roth',        v: r => n(r.yRoth)     },
+    { h: 'Bal - D Roth',        v: r => n(r.dRoth)     },
+    { h: 'Bal - Y HSA',         v: r => n(r.yHSA)      },
+    { h: 'Bal - D HSA',         v: r => n(r.dHSA)      },
+    { h: 'Total Portfolio',     v: r => n(r.total)      },
+  ];
+
+  // ── Build SpreadsheetML XML ──
+  const xmlEsc = s => String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+  const cell = (v, isHeader) => {
+    const t = typeof v === 'number' || (v !== '' && !isNaN(Number(v)) && v !== '');
+    if (isHeader) return `<Cell ss:StyleID="h"><Data ss:Type="String">${xmlEsc(v)}</Data></Cell>`;
+    if (t)  return `<Cell ss:StyleID="n"><Data ss:Type="Number">${v}</Data></Cell>`;
+    return `<Cell ss:StyleID="s"><Data ss:Type="String">${xmlEsc(v)}</Data></Cell>`;
+  };
+
+  const headerRow = `<Row ss:StyleID="h">${COLS.map(c => cell(c.h, true)).join('')}</Row>`;
+  const dataRows  = _lastProj.map(r =>
+    `<Row>${COLS.map(c => cell(c.v(r), false)).join('')}</Row>`
+  ).join('\n');
+
+  // ── Inputs worksheet ──
+  // Each entry: [ section-or-null, label, field-id ]
+  // A null section means it's a section header row, not a data row.
+  const INPUT_PARAMS = [
+    [null, 'YASHPAL', null],
+    ['Personal',        'Current Age',                     'y_age'],
+    ['Personal',        'Retirement Age',                  'y_retAge'],
+    ['Personal',        'Life Expectancy',                 'y_lifeExp'],
+    ['Income',          'Annual Salary ($)',               'y_salary'],
+    ['Income',          'SSN Claim Age',                   'y_ssnAge'],
+    ['Income',          'SSN Monthly at 62',               'y_ssn62'],
+    ['Income',          'SSN Monthly at 65',               'y_ssn65'],
+    ['Income',          'SSN Monthly at 67',               'y_ssn67'],
+    ['Income',          'SSN Monthly at 70',               'y_ssn70'],
+    ['Income',          'Pension (annual $)',               'y_pension'],
+    ['Accounts',        '401K / IRA ($)',                  'y_401k'],
+    ['Accounts',        'Roth IRA ($)',                    'y_roth'],
+    ['Accounts',        'HSA ($)',                         'y_hsa'],
+    [null, 'DIPTI', null],
+    ['Personal',        'Current Age',                     'd_age'],
+    ['Personal',        'Retirement Age',                  'd_retAge'],
+    ['Personal',        'Life Expectancy',                 'd_lifeExp'],
+    ['Income',          'Annual Salary ($)',               'd_salary'],
+    ['Income',          'SSN Claim Age',                   'd_ssnAge'],
+    ['Income',          'SSN Monthly at 62',               'd_ssn62'],
+    ['Income',          'SSN Monthly at 65',               'd_ssn65'],
+    ['Income',          'SSN Monthly at 67',               'd_ssn67'],
+    ['Income',          'SSN Monthly at 70',               'd_ssn70'],
+    ['Income',          'Pension (annual $)',               'd_pension'],
+    ['Accounts',        '401K / IRA ($)',                  'd_401k'],
+    ['Accounts',        'Roth IRA ($)',                    'd_roth'],
+    ['Accounts',        'HSA ($)',                         'd_hsa'],
+    [null, 'JOINT / HOUSEHOLD', null],
+    ['Location',        'State of Retirement',             'j_state'],
+    ['Location',        'Marital Status',                  'j_marital'],
+    ['Finances',        'Other Income / Year ($)',         'j_otherIncome'],
+    ['Finances',        'Current Household Spend / Year ($)', 'j_currentSpend'],
+    ['Finances',        'Annual Savings / Year ($)',       'j_savings'],
+    ['Finances',        'Desired Retirement Spend / Year ($)', 'j_retSpend'],
+    ['Finances',        'Joint Taxable / Brokerage ($)',   'j_taxable'],
+    ['Assumptions',     'Base Return Rate (%)',            'j_returnRate'],
+    ['Assumptions',     'Inflation Rate (%)',              'j_inflRate'],
+    [null, 'TAX DEDUCTIONS', null],
+    ['Deductions',      'Deduction Method',                'j_dedMethod'],
+    ['Deductions',      'Mortgage Interest ($)',           'j_ded_mortgage'],
+    ['Deductions',      'Charitable Contributions ($)',    'j_ded_charity'],
+    ['Deductions',      'Medical Expenses above 7.5% AGI ($)', 'j_ded_medical'],
+    ['Deductions',      'SALT (capped $10K) ($)',          'j_ded_salt'],
+    ['Deductions',      'Other Itemized ($)',              'j_ded_other'],
+    [null, 'ROTH CONVERSIONS', null],
+    ['Roth Conv',       'Enable Roth Conversions',         'j_rothEnable'],
+    ['Roth Conv',       'Yashpal Start Age',               'j_rothStartY'],
+    ['Roth Conv',       'Yashpal End Age',                 'j_rothEndY'],
+    ['Roth Conv',       'Dipti Start Age',                 'j_rothStartD'],
+    ['Roth Conv',       'Dipti End Age',                   'j_rothEndD'],
+    ['Roth Conv',       'Annual Conversion Amount ($)',    'j_rothAmt'],
+    ['Roth Conv',       'Target Bracket Ceiling',          'j_rothBracket'],
+  ];
+
+  const bracketLabels = {
+    '0':      'No bracket limit (fixed amount)',
+    '94300':  'Top of 22% bracket ($94,300)',
+    '201050': 'Top of 24% bracket ($201,050)',
+    '383900': 'Top of 32% bracket ($383,900)',
+  };
+
+  const inputRows = INPUT_PARAMS.map(([section, label, id]) => {
+    if (id === null) {
+      // Section header row
+      return `<Row ss:StyleID="sec">` +
+        `<Cell ss:StyleID="sec"><Data ss:Type="String">${xmlEsc(label)}</Data></Cell>` +
+        `<Cell ss:StyleID="sec"><Data ss:Type="String"></Data></Cell>` +
+        `<Cell ss:StyleID="sec"><Data ss:Type="String"></Data></Cell>` +
+        `</Row>`;
+    }
+    const raw = (document.getElementById(id) || {}).value ?? '';
+    // Pretty-print select values
+    let display = raw;
+    if (id === 'j_rothBracket') display = bracketLabels[raw] || raw;
+    if (id === 'j_marital')     display = raw === 'M' ? 'Married' : 'Single';
+    if (id === 'j_rothEnable')  display = raw === 'yes' ? 'Yes — convert annually' : 'No conversions';
+    if (id === 'j_dedMethod')   display = raw === 'itemized' ? 'Itemized' : 'Standard Deduction';
+    const isNum = display !== '' && !isNaN(Number(display)) && id !== 'j_rothBracket' && id !== 'j_marital' && id !== 'j_rothEnable' && id !== 'j_dedMethod' && id !== 'j_state' && id !== 'y_ssnAge' && id !== 'd_ssnAge';
+    const valCell = isNum
+      ? `<Cell ss:StyleID="n"><Data ss:Type="Number">${display}</Data></Cell>`
+      : `<Cell ss:StyleID="s"><Data ss:Type="String">${xmlEsc(display)}</Data></Cell>`;
+    return `<Row><Cell ss:StyleID="lbl"><Data ss:Type="String">${xmlEsc(section)}</Data></Cell>` +
+           `<Cell ss:StyleID="lbl2"><Data ss:Type="String">${xmlEsc(label)}</Data></Cell>` +
+           `${valCell}</Row>`;
+  }).join('\n');
+
+  const now2 = new Date().toLocaleString();
+  const metaRow = `<Row><Cell ss:StyleID="lbl"><Data ss:Type="String">Generated</Data></Cell>` +
+    `<Cell ss:StyleID="lbl2"><Data ss:Type="String">Report Date / Time</Data></Cell>` +
+    `<Cell ss:StyleID="s"><Data ss:Type="String">${xmlEsc(now2)}</Data></Cell></Row>`;
+
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+  xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
+  xmlns:x="urn:schemas-microsoft-com:office:excel">
+  <Styles>
+    <Style ss:ID="h">
+      <Font ss:Bold="1" ss:Color="#FFFFFF"/>
+      <Interior ss:Color="#1E3A5F" ss:Pattern="Solid"/>
+      <Alignment ss:WrapText="1"/>
+    </Style>
+    <Style ss:ID="n">
+      <NumberFormat ss:Format="#,##0"/>
+    </Style>
+    <Style ss:ID="s"/>
+    <Style ss:ID="sec">
+      <Font ss:Bold="1" ss:Color="#FFFFFF" ss:Size="11"/>
+      <Interior ss:Color="#2A5298" ss:Pattern="Solid"/>
+    </Style>
+    <Style ss:ID="lbl">
+      <Font ss:Color="#57606A" ss:Italic="1"/>
+      <Interior ss:Color="#F7F8FA" ss:Pattern="Solid"/>
+    </Style>
+    <Style ss:ID="lbl2">
+      <Font ss:Bold="1" ss:Color="#1F2328"/>
+    </Style>
+  </Styles>
+  <Worksheet ss:Name="Year-by-Year">
+    <Table>
+      <Column ss:Width="70"/>
+      ${headerRow}
+      ${dataRows}
+    </Table>
+    <WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel">
+      <FreezePanes/>
+      <FrozenNoSplit/>
+      <SplitHorizontal>1</SplitHorizontal>
+      <TopRowBottomPane>1</TopRowBottomPane>
+    </WorksheetOptions>
+  </Worksheet>
+  <Worksheet ss:Name="Inputs">
+    <Table>
+      <Column ss:Width="120"/>
+      <Column ss:Width="260"/>
+      <Column ss:Width="200"/>
+      <Row ss:StyleID="h">
+        <Cell><Data ss:Type="String">Section</Data></Cell>
+        <Cell><Data ss:Type="String">Parameter</Data></Cell>
+        <Cell><Data ss:Type="String">Value</Data></Cell>
+      </Row>
+      ${metaRow}
+      ${inputRows}
+    </Table>
+  </Worksheet>
+</Workbook>`;
+
+  // ── File name: YBY-YYYYMMDD-HHMMSS.xlsx ──
+  const now = new Date();
+  const pad = x => String(x).padStart(2,'0');
+  const ts  = `${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}`
+            + `-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+  const fileName = `YBY-${ts}.xls`; // .xls extension so browsers open it in Excel directly
+
+  const blob = new Blob([xml], { type: 'application/vnd.ms-excel' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// ══════════════════════════════════════════════════
+//  LocalStorage
+// ══════════════════════════════════════════════════
+const FIELDS = [
+  'y_age','y_retAge','y_lifeExp','y_salary','y_ssnAge',
+  'y_ssn62','y_ssn65','y_ssn67','y_ssn70',
+  'y_401k','y_roth','y_hsa','y_pension',
+  'd_age','d_retAge','d_lifeExp','d_salary','d_ssnAge',
+  'd_ssn62','d_ssn65','d_ssn67','d_ssn70',
+  'd_401k','d_roth','d_hsa','d_pension',
+  'j_state','j_marital','j_otherIncome','j_currentSpend',
+  'j_savings','j_retSpend','j_taxable','j_returnRate','j_inflRate',
+  'j_dedMethod','j_ded_mortgage','j_ded_charity','j_ded_medical','j_ded_salt','j_ded_other',
+  'j_rothEnable','j_rothStartY','j_rothEndY','j_rothStartD','j_rothEndD','j_rothAmt','j_rothBracket'
+];
+
+function saveToStorage() {
+  const data = {};
+  FIELDS.forEach(id => { data[id] = document.getElementById(id).value; });
+  localStorage.setItem('retPlannerData_v2', JSON.stringify(data));
+}
+
+function loadFromStorage() {
+  const raw = localStorage.getItem('retPlannerData_v2');
+  if (!raw) return false;
+  const data = JSON.parse(raw);
+  FIELDS.forEach(id => {
+    const e = document.getElementById(id);
+    if (e && data[id] !== undefined) e.value = data[id];
+  });
+  syncAssumptionsBar();
+  toggleDeductionFields();  // restore panel visibility + live total
+  toggleRothConvFields();   // restore Roth conv fields visibility
+  return true;
+}
+
+function resetToDefaults() {
+  localStorage.removeItem('retPlannerData_v2');
+  const defaults = {
+    y_age:61, y_retAge:65, y_lifeExp:90, y_salary:325000, y_ssnAge:65,
+    y_ssn62:2688, y_ssn65:3462, y_ssn67:4088, y_ssn70:5192,
+    y_401k:3000000, y_roth:75000, y_hsa:75000, y_pension:0,
+    d_age:60, d_retAge:60, d_lifeExp:90, d_salary:0, d_ssnAge:65,
+    d_ssn62:2423, d_ssn65:2982, d_ssn67:3441, d_ssn70:4267,
+    d_401k:1700000, d_roth:0, d_hsa:25000, d_pension:0,
+    j_state:'CA', j_marital:'M', j_otherIncome:45000,
+    j_currentSpend:200000, j_savings:35000, j_retSpend:225000,
+    j_taxable:8000000, j_returnRate:6, j_inflRate:3,
+    j_dedMethod:'standard', j_ded_mortgage:0, j_ded_charity:0,
+    j_ded_medical:0, j_ded_salt:10000, j_ded_other:0,
+    j_rothEnable:'no', j_rothStartY:62, j_rothEndY:74,
+    j_rothStartD:60, j_rothEndD:74, j_rothAmt:150000, j_rothBracket:0
+  };
+  FIELDS.forEach(id => {
+    const e = document.getElementById(id);
+    if (e && defaults[id] !== undefined) e.value = defaults[id];
+  });
+  syncAssumptionsBar();
+  toggleDeductionFields();
+  toggleRothConvFields();
+  calculate();
+}
+
+// ══════════════════════════════════════════════════
+//  Roth conversion fields toggle
+// ══════════════════════════════════════════════════
+function toggleRothConvFields() {
+  const show = sel('j_rothEnable') === 'yes';
+  document.getElementById('rothConvFields').style.display = show ? 'block' : 'none';
+}
+
+// ══════════════════════════════════════════════════
+//  Deduction toggle & live itemized total
+// ══════════════════════════════════════════════════
+function toggleDeductionFields() {
+  const isItemized = sel('j_dedMethod') === 'itemized';
+  document.getElementById('itemizedFields').style.display = isItemized ? 'block' : 'none';
+  updateItemizedTotal();
+}
+
+function updateItemizedTotal() {
+  const married  = sel('j_marital') === 'M';
+  const stdDed   = married ? STD_DED_MFJ : STD_DED_SINGLE;
+  const SALT_CAP = 10000;
+  const total = num('j_ded_mortgage')
+              + num('j_ded_charity')
+              + num('j_ded_medical')
+              + Math.min(num('j_ded_salt'), SALT_CAP)
+              + num('j_ded_other');
+  const totalEl   = document.getElementById('itemizedTotal');
+  const winnerEl  = document.getElementById('dedWinner');
+  if (!totalEl) return;
+  totalEl.textContent = '$' + Math.round(total).toLocaleString();
+  if (total > stdDed) {
+    winnerEl.textContent = `✓ Itemized saves $${Math.round(total - stdDed).toLocaleString()} vs standard`;
+    winnerEl.style.color = '#1a7f37';
+  } else if (total > 0) {
+    winnerEl.textContent = `⚠ Standard ($${stdDed.toLocaleString()}) is larger — will be used`;
+    winnerEl.style.color = '#b35000';
+  } else {
+    winnerEl.textContent = '';
+  }
+}
+
+
+// ── Keep assumptions bar in sync with sidebar fields ──
+function syncAssumptionsBar() {
+  const barInputs = document.querySelectorAll('.assumptions-bar input[type="number"]');
+  if (barInputs[0]) barInputs[0].value = el('j_returnRate').value;
+  if (barInputs[1]) barInputs[1].value = el('j_inflRate').value;
+}
+
+// ── Called when user edits a value in the assumptions bar ──
+function syncAndCalc(fieldId, value) {
+  const sidebarField = document.getElementById(fieldId);
+  if (sidebarField) sidebarField.value = value;
+  calculate();
+}
+
+// ══════════════════════════════════════════════════
+//  Roth Conversion Chart — opens in new window
+// ══════════════════════════════════════════════════
+let _chartWin = null;
+function openConversionChart() {
+  // Close stale popup so every click gets a fresh snapshot of current sidebar values
+  if (_chartWin && !_chartWin.closed) { _chartWin.close(); }
+
+  const snap = {};
+  FIELDS.forEach(id => { const e = document.getElementById(id); if (e) snap[id] = e.value; });
+  // Template lives in <textarea id="convChartTpl" style="display:none"> — browser treats
+  // its content as raw text so inner <\/script> tags never close the outer document.
+  // Read the raw text via .value and inject SNAP JSON at the placeholder.
+  const tpl = document.getElementById('convChartTpl').value;
+  const popupHtml = tpl.replace('/*SNAP_PLACEHOLDER*/', JSON.stringify(snap));
+  // Use a Blob URL so the popup's own <script> executes without CSP issues
+  const blob = new Blob([popupHtml], { type: 'text/html' });
+  const url  = URL.createObjectURL(blob);
+  _chartWin = window.open(url, '_blank', 'width=1100,height=820,scrollbars=yes,resizable=yes');
+  if (!_chartWin) { alert('Pop-up blocked. Please allow pop-ups for this page.'); return; }
+  // Revoke after a short delay so the window has time to load
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+// ══════════════════════════════════════════════════
+//  Optimizer
+// ══════════════════════════════════════════════════
+//  Optimizer
+// ══════════════════════════════════════════════════
+function toggleOptimizer() {
+  const body    = el('optimizerBody');
+  const chevron = el('optimizerChevron');
+  const open    = body.style.display === 'none';
+  body.style.display    = open ? '' : 'none';
+  chevron.textContent   = open ? '▲ collapse' : '▼ expand';
+}
+
+function runOptimizer() {
+  const statusEl  = el('optimizerStatus');
+  const resultsEl = el('optimizerResults');
+  statusEl.textContent  = 'Running 64 scenarios…';
+  resultsEl.innerHTML   = '';
+
+  const rate       = num('j_returnRate') / 100;
+  const SSN_AGES   = [62, 65, 67, 70];
+  const CEILINGS   = [
+    { label: 'No Roth Conv',              value: null  },
+    { label: 'Roth — 22% ceiling',        value: 94300  },
+    { label: 'Roth — 24% ceiling',        value: 201050 },
+    { label: 'Roth — 32% ceiling',        value: 383900 },
+  ];
+
+  const rothEnabled = sel('j_rothEnable') === 'yes';
+  const convBase = {
+    startY: num('j_rothStartY'), endY: num('j_rothEndY'),
+    startD: num('j_rothStartD'), endD: num('j_rothEndD'),
+    amt:    num('j_rothAmt'),
+  };
+
+  const results = [];
+
+  for (const ySsn of SSN_AGES) {
+    for (const dSsn of SSN_AGES) {
+      for (const ceiling of CEILINGS) {
+        const conv = ceiling.value === null
+          ? { enabled: false }
+          : { ...convBase, enabled: true, bracketCeiling: ceiling.value };
+
+        const proj     = project(rate, conv, { ySsnAge: ySsn, dSsnAge: dSsn });
+        const lastRow  = proj[proj.length - 1];
+        const atRet    = rowAtLastRet(proj);
+        const dist     = proj.filter(r => r.phase === 'Distribution');
+        const lifeTax  = dist.reduce((a, r) => a + (r.totalTaxPaid || 0), 0)
+                       + proj.reduce((a, r) => a + (r.convTax || 0), 0);
+        const at75     = proj.find(r => r.curYashpalAge >= 75) || lastRow;
+        const firstRmd = at75 ? (at75.y401k / 24.6 + at75.d401k / 24.6) : 0;
+
+        results.push({
+          ySsnAge:    ySsn,
+          dSsnAge:    dSsn,
+          ceiling:    ceiling.label,
+          nestEgg:    atRet.total,
+          finalEstate: lastRow.total,
+          lifeTax,
+          firstRmd,
+          roth75:     at75 ? (at75.yRoth + at75.dRoth) : 0,
+          pre75:      at75 ? (at75.y401k  + at75.d401k)  : 0,
+        });
+      }
+    }
+  }
+
+  results.sort((a, b) => b.finalEstate - a.finalEstate);
+
+  const best = results[0];
+  const currentYSsn = parseInt(sel('y_ssnAge'));
+  const currentDSsn = parseInt(sel('d_ssnAge'));
+  const currentCeil = !rothEnabled ? 'No Roth Conv'
+    : sel('j_rothBracket') === '94300'  ? 'Roth — 22% ceiling'
+    : sel('j_rothBracket') === '201050' ? 'Roth — 24% ceiling'
+    : sel('j_rothBracket') === '383900' ? 'Roth — 32% ceiling'
+    : 'No Roth Conv';
+
+  const isCurrentRow = r =>
+    r.ySsnAge === currentYSsn && r.dSsnAge === currentDSsn && r.ceiling === currentCeil;
+
+  const TOP_N = 15;
+  const shown = results.slice(0, TOP_N);
+  const currentInShown = shown.some(isCurrentRow);
+  const currentRow = results.find(isCurrentRow);
+  const currentRank = results.findIndex(isCurrentRow) + 1;
+
+  const rowHtml = rows => rows.map((r) => {
+    const rank     = results.indexOf(r) + 1;
+    const isBest   = rank === 1;
+    const isCurrent= isCurrentRow(r);
+    const bg = isBest ? '#f0fdf4' : isCurrent ? '#eff6ff' : '';
+    const badge = isBest   ? `<span style="background:#1a7f37;color:#fff;font-size:10px;padding:1px 7px;border-radius:10px;margin-left:6px;">★ Best</span>`
+                : isCurrent? `<span style="background:#3b82d4;color:#fff;font-size:10px;padding:1px 7px;border-radius:10px;margin-left:6px;">◉ Current</span>`
+                : '';
+    const estDiff = r.finalEstate - best.finalEstate;
+    const diffStr = isBest ? '' : `<span style="color:#cf222e;font-size:11px;">${fmtK(estDiff)}</span>`;
+    return `<tr style="background:${bg};">
+      <td style="font-weight:700;color:#57606a;">#${rank}</td>
+      <td>Y-${r.ySsnAge} / D-${r.dSsnAge}${badge}</td>
+      <td>${r.ceiling}</td>
+      <td style="font-weight:700;color:#1e3a5f;">${fmtK(r.nestEgg)}</td>
+      <td style="font-weight:700;color:${isBest?'#1a7f37':'#1e3a5f'};">${fmtK(r.finalEstate)}</td>
+      <td>${diffStr}</td>
+      <td style="color:#713f12;">${fmtK(r.lifeTax)}</td>
+      <td style="color:#7e1d6b;">${fmtK(r.firstRmd)}</td>
+      <td style="color:#5b21b6;">${fmtK(r.roth75)}</td>
+      <td>
+        <button onclick="applyOptimizerResult(${r.ySsnAge},${r.dSsnAge},${JSON.stringify(r.ceiling)})"
+          style="font-size:11px;padding:3px 10px;background:#1e3a5f;color:#fff;border:none;border-radius:4px;cursor:pointer;">
+          Apply
+        </button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  let extraRowHtml = '';
+  if (!currentInShown && currentRow) {
+    extraRowHtml = `
+      <tr><td colspan="10" style="text-align:center;font-size:11px;color:#8b949e;padding:4px;border-top:1px dashed #d0d7de;">
+        … ${currentRank - TOP_N} more rows …
+      </td></tr>
+      ${rowHtml([currentRow])}`;
+  }
+
+  resultsEl.innerHTML = `
+    <p style="font-size:12px;color:#57606a;margin-bottom:10px;">
+      Showing top ${Math.min(TOP_N, results.length)} of ${results.length} combinations, ranked by final estate.
+      ${currentRow ? `Current settings rank <strong>#${currentRank}</strong>.` : ''}
+    </p>
+    <div style="overflow-x:auto;">
+    <table>
+      <thead>
+        <tr>
+          <th>Rank</th>
+          <th>SSN Ages (Y / D)</th>
+          <th>Roth Strategy</th>
+          <th>Nest Egg at Ret.</th>
+          <th>Final Estate</th>
+          <th>vs Best</th>
+          <th>Lifetime Tax</th>
+          <th>First RMD (age 75)</th>
+          <th>Roth at 75</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>${rowHtml(shown)}${extraRowHtml}</tbody>
+    </table>
+    </div>`;
+
+  statusEl.textContent = `✓ Done — ${results.length} combinations evaluated in <1s`;
+}
+
+function applyOptimizerResult(ySsnAge, dSsnAge, ceilingLabel) {
+  el('y_ssnAge').value = ySsnAge;
+  el('d_ssnAge').value = dSsnAge;
+
+  if (ceilingLabel === 'No Roth Conv') {
+    el('j_rothEnable').value = 'no';
+    toggleRothConvFields();
+  } else {
+    el('j_rothEnable').value = 'yes';
+    toggleRothConvFields();
+    const ceilMap = {
+      'Roth — 22% ceiling': '94300',
+      'Roth — 24% ceiling': '201050',
+      'Roth — 32% ceiling': '383900',
+    };
+    if (ceilMap[ceilingLabel]) el('j_rothBracket').value = ceilMap[ceilingLabel];
+  }
+
+  calculate();
+  el('summaryCards').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  el('optimizerStatus').textContent = `✓ Applied: SSN Y-${ySsnAge}/D-${dSsnAge}, ${ceilingLabel}`;
+}
+
+// ══════════════════════════════════════════════════
+//  LocalStorage
+// ══════════════════════════════════════════════════
+
+</script>
+
+<!-- ══ Roth Conversion Chart Popup Template ══
+     Stored in a hidden <textarea> so browser treats content as raw text.
+     Inner script-close tags and backticks are never parsed by the outer engine.
+     openConversionChart() reads this via .value and injects SNAP JSON.
+-->
+<textarea id="convChartTpl" style="display:none"><!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>Roth Conversion Chart</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,"Segoe UI",system-ui,sans-serif;font-size:13px;background:#f0f2f5;color:#1f2328}
+header{background:#1e3a5f;color:#fff;padding:10px 24px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+header h1{font-size:15px;font-weight:700;flex:1}
+header span{font-size:11px;opacity:.7}
+.wrap{padding:16px 24px}
+.inp-section{background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:12px 18px;margin-bottom:14px}
+.inp-section h3{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#3b82d4;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #e5e7eb}
+.inp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:8px 16px}
+.inp-field{display:flex;flex-direction:column;gap:3px}
+.inp-field label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#57606a}
+.inp-field input,.inp-field select{width:100%;padding:4px 7px;border:1px solid #d0d7de;border-radius:5px;font-size:12px;font-family:inherit;color:#1f2328;background:#fff}
+.inp-field input:focus,.inp-field select:focus{outline:2px solid #7c5cd8;border-color:#7c5cd8}
+.controls{background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:12px 18px;margin-bottom:14px;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px 20px;align-items:end}
+.ctrl label{display:block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#57606a;margin-bottom:4px}
+.ctrl input[type=range]{width:100%;accent-color:#7c5cd8}
+.ctrl .val{font-size:16px;font-weight:700;color:#7c5cd8;margin-top:2px}
+.ctrl select{width:100%;padding:4px 7px;border:1px solid #d0d7de;border-radius:5px;font-size:12px}
+.chart-card{background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:14px 18px;margin-bottom:14px}
+.chart-card h3{font-size:12px;font-weight:700;color:#1e3a5f;margin-bottom:12px}
+svg.mainchart{display:block;width:100%;overflow:visible}
+.legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:8px;font-size:11px}
+.legend-item{display:flex;align-items:center;gap:5px}
+.legend-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.summary{background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:14px 18px}
+.summary h3{font-size:12px;font-weight:700;color:#1e3a5f;margin-bottom:10px}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{background:#f7f8fa;padding:5px 8px;text-align:left;font-size:10px;font-weight:700;color:#57606a;text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid #e5e7eb}
+td{padding:5px 8px;border-bottom:1px solid #f0f2f5}
+tr.best td{background:#f0fdf4;font-weight:600}
+</style>
+</head>
+<body>
+<header>
+  <h1>Roth Conversion &#8212; Final Portfolio vs Annual Conversion Amount</h1>
+  <span id="subtitle"></span>
+</header>
+<div class="wrap">
+  <div class="inp-section">
+    <h3>Yashpal</h3>
+    <div class="inp-grid">
+      <div class="inp-field"><label>Current Age</label><input type="number" id="y_age" min="40" max="90"/></div>
+      <div class="inp-field"><label>Retirement Age</label><input type="number" id="y_retAge" min="50" max="90"/></div>
+      <div class="inp-field"><label>Life Expectancy</label><input type="number" id="y_lifeExp" min="60" max="110"/></div>
+      <div class="inp-field"><label>SSN Claim Age</label><select id="y_ssnAge"><option value="62">62</option><option value="65">65</option><option value="67">67</option><option value="70">70</option></select></div>
+      <div class="inp-field"><label>SSN/mo at 62</label><input type="number" id="y_ssn62" min="0"/></div>
+      <div class="inp-field"><label>SSN/mo at 65</label><input type="number" id="y_ssn65" min="0"/></div>
+      <div class="inp-field"><label>SSN/mo at 67</label><input type="number" id="y_ssn67" min="0"/></div>
+      <div class="inp-field"><label>SSN/mo at 70</label><input type="number" id="y_ssn70" min="0"/></div>
+      <div class="inp-field"><label>401K / IRA ($)</label><input type="number" id="y_401k" min="0"/></div>
+      <div class="inp-field"><label>Roth IRA ($)</label><input type="number" id="y_roth" min="0"/></div>
+      <div class="inp-field"><label>HSA ($)</label><input type="number" id="y_hsa" min="0"/></div>
+      <div class="inp-field"><label>Pension/yr ($)</label><input type="number" id="y_pension" min="0"/></div>
+    </div>
+  </div>
+  <div class="inp-section">
+    <h3>Dipti</h3>
+    <div class="inp-grid">
+      <div class="inp-field"><label>Current Age</label><input type="number" id="d_age" min="40" max="90"/></div>
+      <div class="inp-field"><label>Retirement Age</label><input type="number" id="d_retAge" min="50" max="90"/></div>
+      <div class="inp-field"><label>Life Expectancy</label><input type="number" id="d_lifeExp" min="60" max="110"/></div>
+      <div class="inp-field"><label>SSN Claim Age</label><select id="d_ssnAge"><option value="62">62</option><option value="65">65</option><option value="67">67</option><option value="70">70</option></select></div>
+      <div class="inp-field"><label>SSN/mo at 62</label><input type="number" id="d_ssn62" min="0"/></div>
+      <div class="inp-field"><label>SSN/mo at 65</label><input type="number" id="d_ssn65" min="0"/></div>
+      <div class="inp-field"><label>SSN/mo at 67</label><input type="number" id="d_ssn67" min="0"/></div>
+      <div class="inp-field"><label>SSN/mo at 70</label><input type="number" id="d_ssn70" min="0"/></div>
+      <div class="inp-field"><label>401K / IRA ($)</label><input type="number" id="d_401k" min="0"/></div>
+      <div class="inp-field"><label>Roth IRA ($)</label><input type="number" id="d_roth" min="0"/></div>
+      <div class="inp-field"><label>HSA ($)</label><input type="number" id="d_hsa" min="0"/></div>
+      <div class="inp-field"><label>Pension/yr ($)</label><input type="number" id="d_pension" min="0"/></div>
+    </div>
+  </div>
+  <div class="inp-section">
+    <h3>Joint / Tax Settings</h3>
+    <div class="inp-grid">
+      <div class="inp-field"><label>Joint Taxable ($)</label><input type="number" id="j_taxable" min="0"/></div>
+      <div class="inp-field"><label>Annual Savings ($)</label><input type="number" id="j_savings" min="0"/></div>
+      <div class="inp-field"><label>Other Income/yr ($)</label><input type="number" id="j_otherIncome" min="0"/></div>
+      <div class="inp-field"><label>Retirement Spend/yr ($)</label><input type="number" id="j_retSpend" min="0"/></div>
+      <div class="inp-field"><label>Return Rate (%)</label><input type="number" id="j_returnRate" min="0" max="20" step="0.1"/></div>
+      <div class="inp-field"><label>Inflation Rate (%)</label><input type="number" id="j_inflRate" min="0" max="15" step="0.1"/></div>
+      <div class="inp-field"><label>State</label><select id="j_state"><option value="CA">CA</option><option value="FL">FL</option><option value="TX">TX</option><option value="NY">NY</option><option value="WA">WA</option><option value="NV">NV</option><option value="AZ">AZ</option><option value="OR">OR</option><option value="CO">CO</option><option value="OTHER">Other</option></select></div>
+      <div class="inp-field"><label>Marital Status</label><select id="j_marital"><option value="M">Married</option><option value="S">Single</option></select></div>
+      <div class="inp-field"><label>Deduction Method</label><select id="j_dedMethod"><option value="standard">Standard</option><option value="itemized">Itemized</option></select></div>
+      <div class="inp-field"><label>Itemized Total ($)</label><input type="number" id="j_ded_total" min="0" placeholder="if itemized"/></div>
+    </div>
+  </div>
+  <div class="controls">
+    <div class="ctrl">
+      <label>Yashpal Conv Start Age</label>
+      <input type="number" id="slStartY" min="50" max="74" value="62" style="padding:4px 7px;border:1px solid #d0d7de;border-radius:5px;font-size:13px;width:80px"/>
+    </div>
+    <div class="ctrl">
+      <label>Yashpal Conv End Age</label>
+      <input type="number" id="slEndY" min="50" max="74" value="74" style="padding:4px 7px;border:1px solid #d0d7de;border-radius:5px;font-size:13px;width:80px"/>
+    </div>
+    <div class="ctrl">
+      <label>Dipti Conv Start Age</label>
+      <input type="number" id="slStartD" min="50" max="74" value="60" style="padding:4px 7px;border:1px solid #d0d7de;border-radius:5px;font-size:13px;width:80px"/>
+    </div>
+    <div class="ctrl">
+      <label>Dipti Conv End Age</label>
+      <input type="number" id="slEndD" min="50" max="74" value="74" style="padding:4px 7px;border:1px solid #d0d7de;border-radius:5px;font-size:13px;width:80px"/>
+    </div>
+    <div class="ctrl">
+      <label>Max Annual Conversion ($)</label>
+      <input type="range" id="slMax" min="50000" max="2000000" step="25000" value="500000"/>
+      <div>Range: $0 to <span class="val" id="lblMax">$500K</span></div>
+    </div>
+    <div class="ctrl">
+      <label>Resolution (steps)</label>
+      <select id="slSteps"><option value="20">20 steps (fast)</option><option value="40" selected>40 steps</option><option value="80">80 steps (fine)</option></select>
+    </div>
+  </div>
+  <div class="chart-card">
+    <h3 id="chartTitle">Final Portfolio vs Annual Roth Conversion Amount</h3>
+    <svg class="mainchart" id="mainSvg" viewBox="0 0 900 420" xmlns="http://www.w3.org/2000/svg"></svg>
+    <div class="legend" id="legend"></div>
+  </div>
+  <div class="summary">
+    <h3>Summary Table</h3>
+    <table><thead><tr><th>Conv./yr</th><th>Final Estate</th><th>vs No Conv</th><th>Lifetime Tax</th><th>Final 401K</th><th>Final Roth</th></tr></thead><tbody id="summaryBody"></tbody></table>
+  </div>
+</div>
+<script>
+const SNAP = /*SNAP_PLACEHOLDER*/;
+const fmtK=n=>{if(Math.abs(n)>=1e6)return '$'+(n/1e6).toFixed(2)+'M';if(Math.abs(n)>=1e3)return '$'+(Math.round(n/1e3))+'K';return '$'+Math.round(n).toLocaleString();};
+const g=id=>{const e=document.getElementById(id);if(e)return e.value;return(SNAP[id]!==undefined)?String(SNAP[id]):'';};
+const gn=id=>parseFloat(g(id))||0;
+function loadFromSnap(){
+  ['y_age','y_retAge','y_lifeExp','y_ssnAge','y_ssn62','y_ssn65','y_ssn67','y_ssn70',
+   'y_401k','y_roth','y_hsa','y_pension',
+   'd_age','d_retAge','d_lifeExp','d_ssnAge','d_ssn62','d_ssn65','d_ssn67','d_ssn70',
+   'd_401k','d_roth','d_hsa','d_pension',
+   'j_taxable','j_savings','j_otherIncome','j_retSpend',
+   'j_returnRate','j_inflRate','j_state','j_marital','j_dedMethod'
+  ].forEach(function(id){
+    var e=document.getElementById(id);
+    if(!e||SNAP[id]===undefined||SNAP[id]==='')return;
+    e.value=SNAP[id];
+  });
+  var it=(parseFloat(SNAP.j_ded_mortgage)||0)+(parseFloat(SNAP.j_ded_charity)||0)
+    +(parseFloat(SNAP.j_ded_medical)||0)+Math.min(parseFloat(SNAP.j_ded_salt)||0,10000)
+    +(parseFloat(SNAP.j_ded_other)||0);
+  var de=document.getElementById('j_ded_total');
+  if(de&&it>0)de.value=Math.round(it);
+}
+const FED_MFJ=[{l:23200,r:.10},{l:94300,r:.12},{l:201050,r:.22},{l:383900,r:.24},{l:487450,r:.32},{l:731200,r:.35},{l:1/0,r:.37}];
+const FED_S=[{l:11600,r:.10},{l:47150,r:.12},{l:100525,r:.22},{l:191950,r:.24},{l:243725,r:.32},{l:609350,r:.35},{l:1/0,r:.37}];
+const LTCG_MFJ=[{l:94050,r:.00},{l:583750,r:.15},{l:1/0,r:.20}];
+const LTCG_S=[{l:47025,r:.00},{l:518900,r:.15},{l:1/0,r:.20}];
+const STD_MFJ=29200,STD_S=14600,NIIT_MFJ=250000,NIIT_S=200000,NIIT=.038;
+const STATE_TAX={CA:10.5,FL:0,TX:0,NY:6.85,WA:0,NV:0,AZ:2.5,OR:9.9,CO:4.4,OTHER:5};
+const RMD_T={75:24.6,76:23.7,77:22.9,78:22.0,79:21.1,80:20.2,81:19.4,82:18.5,83:17.7,84:16.8,85:16.0,86:15.2,87:14.4,88:13.7,89:12.9,90:12.2,91:11.5,92:10.8,93:10.1,94:9.5,95:8.9,96:8.4,97:7.8,98:7.3,99:6.8,100:6.4};
+function rDiv(a){return a<75?Infinity:(RMD_T[a]||RMD_T[100]);}
+function pTax(inc,br){var t=0,p=0;for(var i=0;i<br.length;i++){if(inc<=p)break;t+=(Math.min(inc,br[i].l)-p)*br[i].r;p=br[i].l;}return t;}
+function cTax(p){
+  var br=p.m?FED_MFJ:FED_S,lg=p.m?LTCG_MFJ:LTCG_S,sd=p.m?STD_MFJ:STD_S,nt=p.m?NIIT_MFJ:NIIT_S;
+  var ded=p.da!=null?p.da:sd,to=Math.max(0,p.oi-ded);
+  var fo=pTax(to,br),fc=pTax(to+p.cg,lg)-pTax(to,lg);
+  var ni=Math.max(0,Math.min(p.cg,p.oi+p.cg-nt))*NIIT;
+  return fo+fc+ni+(p.oi+p.cg)*p.sr;
+}
+function project(convAmt,startY,endY,startD,endD){
+  var yAge=gn('y_age'),yRet=gn('y_retAge'),yLife=gn('y_lifeExp');
+  var dAge=gn('d_age'),dRet=gn('d_retAge'),dLife=gn('d_lifeExp');
+  var ySsnA=parseInt(g('y_ssnAge')||65),dSsnA=parseInt(g('d_ssnAge')||65);
+  var ySsn={62:gn('y_ssn62'),65:gn('y_ssn65'),67:gn('y_ssn67'),70:gn('y_ssn70')};
+  var dSsn={62:gn('d_ssn62'),65:gn('d_ssn65'),67:gn('d_ssn67'),70:gn('d_ssn70')};
+  var yP=gn('y_pension'),dP=gn('d_pension');
+  var oi=gn('j_otherIncome'),rs=gn('j_retSpend'),sv=gn('j_savings');
+  var infl=gn('j_inflRate')/100,rate=gn('j_returnRate')/100;
+  var sk=g('j_state')||'CA',sr=(STATE_TAX[sk]||0)/100;
+  var m=g('j_marital')==='M',sd=m?STD_MFJ:STD_S;
+  var dm=g('j_dedMethod');
+  var it=dm==='itemized'?gn('j_ded_total'):0;
+  var da=dm==='itemized'?Math.max(sd,it):sd;
+  var AMGR=(m?.22:.24)+sr,CGR=.15;
+  var y4=gn('y_401k'),yRo=gn('y_roth'),yh=gn('y_hsa');
+  var d4=gn('d_401k'),dRo=gn('d_roth'),dh=gn('d_hsa'),jt=gn('j_taxable');
+  var lifeTax=0;
+  var endYr=Math.max(yLife,dLife)-Math.min(yAge,dAge);
+  for(var step=0;step<=endYr;step++){
+    var yA=yAge+step,dA=dAge+step,w=(yA<yRet)||(dA<dRet),iF=Math.pow(1+infl,step),grow=1+rate;
+    if(w){
+      y4*=grow;d4*=grow;yRo*=grow;dRo*=grow;yh*=grow;dh*=grow;jt*=grow;
+      y4+=sv*.35;d4+=sv*.25;yRo+=sv*.10;jt+=sv*.20;yh+=sv*.05;dh+=sv*.05;
+      // Per-person conversion windows — exactly matches main engine
+      var yIn=convAmt>0&&yA>=startY&&yA<=endY;
+      var dIn=convAmt>0&&dA>=startD&&dA<=endD;
+      if(yIn||dIn){
+        var eo=oi*iF,tot=y4+d4,ysh=tot>0?y4/tot:.5;
+        var yc=yIn?Math.min(y4,convAmt*ysh):0,dc=dIn?Math.min(d4,convAmt*(1-ysh)):0;
+        y4-=yc;d4-=dc;yRo+=yc;dRo+=dc;
+        var ct=cTax({oi:eo+(yc+dc),cg:eo,m:m,sr:sr,da:da})-cTax({oi:eo,cg:eo,m:m,sr:sr,da:da});
+        jt-=ct;lifeTax+=ct;
+      }
+    } else {
+      var ySA=yA>=ySsnA?(ySsn[ySsnA]||0)*12*iF:0,dSA=dA>=dSsnA?(dSsn[dSsnA]||0)*12*iF:0;
+      var pen=(yP+dP)*iF,spR=rs*iF,otR=oi*iF;
+      var portNeeded=Math.max(0,spR-(ySA+dSA+pen+otR));
+      var yrm=Math.min(y4,y4/rDiv(yA)),drm=Math.min(d4,d4/rDiv(dA));
+      y4-=yrm;d4-=drm;
+      var rmdNet=(yrm+drm)*(1-AMGR);
+      var need=Math.max(0,portNeeded-rmdNet);
+      // No bracket ceiling — convert the fixed slider amount unconditionally (matches main engine bracketCeiling:0)
+      var yInD=convAmt>0&&yA>=startY&&yA<=Math.min(endY,74);
+      var dInD=convAmt>0&&dA>=startD&&dA<=Math.min(endD,74);
+      var ca=yInD||dInD;
+      // Normal draw order: 401k first, then taxable (no ceiling to protect)
+      var yv=0,dv=0,jd=0;
+      var en2=need/(1-AMGR),tot4=Math.max(y4+d4,1);
+      yv=Math.min(y4,en2*(y4/tot4));y4-=yv;need-=yv*(1-AMGR);
+      dv=Math.min(d4,en2*(d4/tot4));d4-=dv;need-=dv*(1-AMGR);
+      var jc=jt*(1-CGR);jd=Math.min(jt,Math.min(jc,Math.max(0,need))/(1-CGR));jt-=jd;need-=jd*(1-CGR);
+      var ryv=Math.min(yRo,Math.max(0,need));yRo-=ryv;need-=ryv;
+      var rdv=Math.min(dRo,Math.max(0,need));dRo-=rdv;need-=rdv;
+      var yhv=Math.min(yh,Math.max(0,need));yh-=yhv;need-=yhv;
+      var dhv=Math.min(dh,Math.max(0,need));dh-=dhv;
+      var tot4drawn=(yrm+yv)+(drm+dv);
+      var ordI=tot4drawn+(ySA+dSA)*.85+pen;
+      var cgI=jd+otR;
+      lifeTax+=cTax({oi:ordI,cg:cgI,m:m,sr:sr,da:da});
+      // Distribution-phase conversion: fixed convAmt, no ceiling cap
+      if(ca){
+        var tot2=Math.max(y4+d4,1),ysh2=y4/tot2;
+        var yc2=yInD?Math.min(y4,convAmt*ysh2):0,dc2=dInD?Math.min(d4,convAmt*(1-ysh2)):0;
+        var ca2=yc2+dc2;
+        if(ca2>0){
+          y4-=yc2;d4-=dc2;yRo+=yc2;dRo+=dc2;
+          var ct2=cTax({oi:ordI+ca2,cg:cgI,m:m,sr:sr,da:da})-cTax({oi:ordI,cg:cgI,m:m,sr:sr,da:da});
+          jt-=ct2;lifeTax+=ct2;
+        }
+      }
+      y4*=grow;d4*=grow;yRo*=grow;dRo*=grow;yh*=grow;dh*=grow;jt*=grow;
+    }
+  }
+  return{finalEstate:y4+yRo+yh+d4+dRo+dh+jt,lifeTax:lifeTax,roth:yRo+dRo,rmd401k:(y4+d4)/24.6};
+}
+var chartData=[];
+function getWindows(){
+  return{
+    sY:parseInt(document.getElementById('slStartY').value)||62,
+    eY:parseInt(document.getElementById('slEndY').value)||74,
+    sD:parseInt(document.getElementById('slStartD').value)||60,
+    eD:parseInt(document.getElementById('slEndD').value)||74
+  };
+}
+function runSweep(){
+  var w=getWindows();
+  var mx=parseInt(document.getElementById('slMax').value);
+  var st=parseInt(document.getElementById('slSteps').value);
+  document.getElementById('subtitle').textContent='Y:'+w.sY+'-'+w.eY+' D:'+w.sD+'-'+w.eD+' | $0-'+fmtK(mx)+' | '+st+' steps';
+  document.getElementById('chartTitle').textContent='Final Portfolio vs Annual Roth Conversion (Y:'+w.sY+'-'+w.eY+', D:'+w.sD+'-'+w.eD+')';
+  chartData=[];
+  var nc=project(0,w.sY,w.eY,w.sD,w.eD).finalEstate;
+  for(var s=0;s<=st;s++){var a=Math.round(s/st*mx);var r=project(a,w.sY,w.eY,w.sD,w.eD);r.a=a;r.nc=nc;chartData.push(r);}
+  draw(chartData,mx,nc);tbl(chartData,nc);
+}
+function draw(data,mx,nc){
+  var sv=document.getElementById('mainSvg');
+  var W=900,H=420,PL=82,PR=32,PT=24,PB=56,cW=W-PL-PR,cH=H-PT-PB;
+  var es=data.map(function(d){return d.finalEstate;});
+  var minV=Math.min.apply(null,es.concat([nc]))*.97,maxV=Math.max.apply(null,es.concat([nc]))*1.03;
+  var xS=function(a){return PL+(a/mx)*cW;};
+  var yS=function(v){return PT+cH-((v-minV)/(maxV-minV))*cH;};
+  var gridSvg='';
+  for(var i=0;i<=5;i++){var v=minV+(maxV-minV)*i/5,y=yS(v);gridSvg+='<line x1="'+PL+'" y1="'+y.toFixed(1)+'" x2="'+(PL+cW)+'" y2="'+y.toFixed(1)+'" stroke="#e5e7eb" stroke-width="1"/><text x="'+(PL-6)+'" y="'+(y+4).toFixed(1)+'" text-anchor="end" font-size="10" fill="#57606a">'+fmtK(v)+'</text>';}
+  var xl='';
+  var xStep=50000;
+  for(var xa=0;xa<=mx;xa+=xStep){var xx=xS(xa);xl+='<line x1="'+xx.toFixed(1)+'" y1="'+(PT+cH)+'" x2="'+xx.toFixed(1)+'" y2="'+(PT+cH+4)+'" stroke="#d0d7de" stroke-width="1"/><text x="'+xx.toFixed(1)+'" y="'+(PT+cH+16).toFixed(1)+'" text-anchor="middle" font-size="10" fill="#57606a">'+fmtK(xa)+'</text>';}
+  var pts=data.map(function(d){return xS(d.a).toFixed(1)+','+yS(d.finalEstate).toFixed(1);}).join(' ');
+  var polyline='<polyline fill="none" stroke="#7c5cd8" stroke-width="2.5" points="'+pts+'"/>';
+  var ny=yS(nc);
+  var baseline='<line x1="'+PL+'" y1="'+ny.toFixed(1)+'" x2="'+(PL+cW)+'" y2="'+ny.toFixed(1)+'" stroke="#e63946" stroke-width="1.5" stroke-dasharray="6,3"/>';
+  var blabel='<text x="'+(PL+cW-4)+'" y="'+(ny-5).toFixed(1)+'" text-anchor="end" font-size="10" fill="#e63946">No conversion ('+fmtK(nc)+')</text>';
+  var best=data[0];for(var k=1;k<data.length;k++){if(data[k].finalEstate>best.finalEstate)best=data[k];}
+  var bx=xS(best.a),by=yS(best.finalEstate);
+  var bestMark='<circle cx="'+bx.toFixed(1)+'" cy="'+by.toFixed(1)+'" r="5" fill="#1a7f37"/><text x="'+(bx+8).toFixed(1)+'" y="'+(by+4).toFixed(1)+'" font-size="10" fill="#1a7f37" font-weight="bold">Best: '+fmtK(best.a)+'/yr -> '+fmtK(best.finalEstate)+'</text>';
+  var axes='<text x="'+(PL+cW/2).toFixed(1)+'" y="'+(PT+cH+36).toFixed(1)+'" text-anchor="middle" font-size="11" fill="#57606a">Annual Roth Conversion Amount</text><text x="'+(PL-54).toFixed(1)+'" y="'+(PT+cH/2).toFixed(1)+'" text-anchor="middle" font-size="11" fill="#57606a" transform="rotate(-90,'+(PL-54).toFixed(1)+','+(PT+cH/2).toFixed(1)+')">Final Portfolio Value</text>';
+  sv.innerHTML=gridSvg+xl+baseline+blabel+polyline+bestMark+axes;
+  document.getElementById('legend').innerHTML='<div class="legend-item"><div class="legend-dot" style="background:#7c5cd8"></div>Final estate with conversion</div><div class="legend-item"><div class="legend-dot" style="background:#e63946"></div>No-conversion baseline</div><div class="legend-item"><div class="legend-dot" style="background:#1a7f37"></div>Optimal point</div>';
+}
+function tbl(data,nc){
+  var best=data[0];for(var i=1;i<data.length;i++){if(data[i].finalEstate>best.finalEstate)best=data[i];}
+  var step=Math.max(1,Math.floor(data.length/10));
+  var samp=[];for(var j=0;j<data.length;j+=step)samp.push(data[j]);
+  if(samp.indexOf(data[data.length-1])<0)samp.push(data[data.length-1]);
+  if(!samp.filter(function(d){return d.a===best.a;}).length)samp.push(best);
+  samp.sort(function(a,b){return a.a-b.a;});
+  document.getElementById('summaryBody').innerHTML=samp.map(function(d){
+    var diff=d.finalEstate-nc,ib=d.a===best.a;
+    return '<tr class="'+(ib?'best':'')+'"><td>'+fmtK(d.a)+'/yr'+(ib?' *':'')+'</td><td>'+fmtK(d.finalEstate)+'</td><td style="color:'+(diff>=0?'#1a7f37':'#cf222e')+'">'+(diff>=0?'+':'')+fmtK(diff)+'</td><td style="color:#713f12">'+fmtK(d.lifeTax)+'</td><td style="color:#7e1d6b">'+fmtK(d.rmd401k)+'</td><td style="color:#5b21b6">'+fmtK(d.roth)+'</td></tr>';
+  }).join('');
+}
+document.querySelectorAll('.inp-section input,.inp-section select').forEach(function(el){
+  el.addEventListener('change',runSweep);
+  el.addEventListener('input',runSweep);
+});
+// Age window inputs re-run sweep on change
+['slStartY','slEndY','slStartD','slEndD'].forEach(function(id){
+  document.getElementById(id).addEventListener('change',runSweep);
+  document.getElementById(id).addEventListener('input',runSweep);
+});
+document.getElementById('slMax').addEventListener('input',function(){
+  document.getElementById('lblMax').textContent=fmtK(parseInt(this.value));
+  runSweep();
+});
+document.getElementById('slSteps').addEventListener('change',runSweep);
+loadFromSnap();
+(function(){
+  // Pre-populate window inputs from sidebar SNAP values
+  document.getElementById('slStartY').value=parseInt(SNAP.j_rothStartY)||62;
+  document.getElementById('slEndY').value=Math.min(parseInt(SNAP.j_rothEndY)||74,74);
+  document.getElementById('slStartD').value=parseInt(SNAP.j_rothStartD)||60;
+  document.getElementById('slEndD').value=Math.min(parseInt(SNAP.j_rothEndD)||74,74);
+  var amt=parseInt(SNAP.j_rothAmt)||150000;
+  var slMax=document.getElementById('slMax');
+  var maxRange=Math.max(500000,Math.ceil(amt*2/50000)*50000);
+  slMax.max=Math.min(maxRange,2000000);
+  slMax.value=maxRange;
+})();
+document.getElementById('lblMax').textContent=fmtK(parseInt(document.getElementById('slMax').value));
+runSweep();
+</script>
+</body>
+</html></textarea>
+
+
+</body>
+</html>
