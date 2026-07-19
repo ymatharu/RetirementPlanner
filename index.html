@@ -2845,17 +2845,15 @@ let _allPlans = [];
 // ── Fetch all plans for signed-in user and populate the switcher ──
 // Must be called AFTER loadFromStorage so _currentPlanId is already set.
 async function loadAllPlans() {
-  if (!_sbClient || _guestMode) { console.log('[Plans] skipped — no client or guest mode'); return; }
+  if (!_sbClient || _guestMode) return;
   const { data: { user } } = await _sbClient.auth.getUser();
-  if (!user) { console.log('[Plans] no user'); return; }
-  const { data: plans, error } = await _sbClient.from('plans')
+  if (!user) return;
+  const { data: plans } = await _sbClient.from('plans')
     .select('id, name, updated_at')
     .eq('user_id', user.id)
     .order('updated_at', { ascending: false });
-  console.log('[Plans] loadAllPlans result:', plans, 'error:', error);
   _allPlans = plans || [];
-  // If the plan was just auto-created by loadFromStorage, _currentPlanId is set;
-  // fall back to the first plan in the list so the dropdown always has a selection.
+  // Fall back to first plan if loadFromStorage didn't set _currentPlanId
   if (!_currentPlanId && _allPlans.length > 0) _currentPlanId = _allPlans[0].id;
   renderPlanSwitcher();
 }
@@ -2864,13 +2862,10 @@ async function loadAllPlans() {
 function renderPlanSwitcher() {
   const sel = el('planSelect');
   if (!sel) return;
-  console.log('[Plans] renderPlanSwitcher, count=', _allPlans.length, '_currentPlanId=', _currentPlanId);
   sel.innerHTML = _allPlans.map(p =>
     `<option value="${p.id}"${p.id === _currentPlanId ? ' selected' : ''}>${escHtml(p.name)}</option>`
   ).join('');
-  // Show switcher only when user has >0 plans
   el('planSwitcher').style.display = _allPlans.length > 0 ? '' : 'none';
-  console.log('[Plans] planSwitcher display=', el('planSwitcher').style.display);
 }
 
 function escHtml(s) {
@@ -3027,15 +3022,13 @@ let _sessionLoaded = false;
 async function onUserSignedIn(user) {
   if (_sessionLoaded) return; // guard against double-fire
   _sessionLoaded = true;
-  console.log('[Auth] onUserSignedIn', user.email);
   el('authOverlay').style.display = 'none';
   updateUserMenu(user);
   _currentPlanId = null;
   _allPlans      = [];
+  // loadFromStorage sets _currentPlanId; loadAllPlans uses it to mark selected option
   await loadFromStorage();
-  console.log('[Auth] loadFromStorage done, _currentPlanId=', _currentPlanId);
   await loadAllPlans();
-  console.log('[Auth] loadAllPlans done, _allPlans=', _allPlans);
   calculate();
 }
 
