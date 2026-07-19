@@ -3084,20 +3084,52 @@ async function settingsChangePassword() {
   el('settingsNewPwd').value = ''; el('settingsConfirmPwd').value = '';
 }
 
-// Delete account
+// Delete account — calls the delete-account Edge Function which uses the admin API
 async function settingsDeleteAccount() {
   if (!_sbClient) return;
   if (!confirm('This will permanently delete your account and ALL saved plans. This cannot be undone. Are you sure?')) return;
-  // Plans are deleted via CASCADE on the DB foreign key.
-  // Supabase requires a server-side call to delete auth users — use the admin API via an Edge Function.
-  // For now, sign the user out and show a support note.
-  await _sbClient.auth.signOut();
-  _setMsg('deleteMsg','Your data has been cleared. To fully remove your auth account contact support.',true);
-  setTimeout(() => {
+
+  const btn = el('settingsModal').querySelector('.settings-btn.danger');
+  if (btn) { btn.disabled = true; btn.textContent = 'Deleting…'; }
+  _setMsg('deleteMsg', 'Deleting your account…', true);
+
+  try {
+    // Get the current session token to pass to the Edge Function
+    const { data: { session } } = await _sbClient.auth.getSession();
+    if (!session) throw new Error('No active session');
+
+    const resp = await fetch(
+      `${SUPABASE_URL}/functions/v1/delete-account`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        }
+      }
+    );
+    const result = await resp.json();
+
+    if (!resp.ok || result.error) {
+      throw new Error(result.error || `HTTP ${resp.status}`);
+    }
+
+    // Success — sign out locally and return to login screen
+    await _sbClient.auth.signOut();
+    _sessionLoaded = false;
+    _currentPlanId = null;
+    _allPlans      = [];
     el('settingsModal').classList.remove('open');
+    el('userMenu').style.display    = 'none';
     el('authOverlay').style.display = '';
     showAuthPanel('login');
-  }, 2500);
+    // Small delay so user sees success before overlay
+    setTimeout(() => alert('Your account and all data have been permanently deleted.'), 200);
+
+  } catch (err) {
+    _setMsg('deleteMsg', `Error: ${err.message}`, false);
+    if (btn) { btn.disabled = false; btn.textContent = 'Delete My Account'; }
+  }
 }
 
 // ══════════════════════════════════════════════════
