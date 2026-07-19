@@ -697,7 +697,7 @@
 
     <!-- Step 3: Person 2 details (couple only) + Joint -->
     <div class="onboard-step" id="ob-step3" style="display:none;">
-      <h3 id="ob-step3-title">Step 3 of 3 — Partner &amp; Household</h3>
+      <h3 id="ob-step3-title">Step 3 of 3 — Partner &amp; Additional Info</h3>
       <div id="ob-p2-section">
         <div class="onboard-grid" id="ob-p2-grid">
           <div class="onboard-field">
@@ -730,9 +730,10 @@
         </div>
       </div>
       <div style="margin-top:14px;">
+        <h4 id="ob-step3-joint-title" style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#57606a;margin-bottom:10px;padding-bottom:6px;border-top:1px solid #e5e7eb;padding-top:14px;">Additional Info</h4>
         <div class="onboard-grid">
           <div class="onboard-field">
-            <label>Joint Taxable / Brokerage ($)</label>
+            <label id="ob-taxable-label">Taxable / Brokerage ($)</label>
             <input type="number" id="ob_j_taxable" min="0" placeholder="e.g. 200000"/>
           </div>
           <div class="onboard-field">
@@ -3178,33 +3179,35 @@ function selectHouseholdType(type) {
   el('ht-single').classList.toggle('selected', type === 'single');
   // Show/hide partner name field
   el('ob-name2-wrap').style.display = type === 'single' ? 'none' : '';
-  // Update step 2 title
+  // Update titles for single vs couple
   el('ob-step2-title').textContent =
-    type === 'single' ? 'Step 2 of 2 — Your Details' : 'Step 2 of 3 — Your Details';
+    type === 'single' ? 'Step 2 of 3 — Your Details' : 'Step 2 of 3 — Your Details';
+  el('ob-step3-title').textContent =
+    type === 'single' ? 'Step 3 of 3 — Additional Info' : 'Step 3 of 3 — Partner & Additional Info';
+  // Hide/show partner section in step 3
+  el('ob-p2-section').style.display = type === 'single' ? 'none' : '';
+  // Relabel taxable field
+  el('ob-taxable-label').textContent =
+    type === 'single' ? 'Taxable / Brokerage ($)' : 'Joint Taxable / Brokerage ($)';
 }
 
 function obNext() {
   if (_obStep === 1) {
-    // Validate name
     const n1 = el('ob_name1').value.trim();
     if (!n1) { el('ob_name1').focus(); return; }
     _obStep = 2;
     el('ob-step1').style.display = 'none';
     el('ob-step2').style.display = '';
     el('ob-back-btn').style.display = '';
-    el('ob-next-btn').textContent =
-      _obHouseholdType === 'single' ? 'Create My Plan →' : 'Next →';
+    el('ob-next-btn').textContent = 'Next →';
     return;
   }
   if (_obStep === 2) {
-    if (_obHouseholdType === 'single') {
-      obFinish();
-    } else {
-      _obStep = 3;
-      el('ob-step2').style.display = 'none';
-      el('ob-step3').style.display = '';
-      el('ob-next-btn').textContent = 'Create My Plan →';
-    }
+    // Both single and couple go to step 3 — single shows Additional Info only
+    _obStep = 3;
+    el('ob-step2').style.display = 'none';
+    el('ob-step3').style.display = '';
+    el('ob-next-btn').textContent = 'Create My Plan →';
     return;
   }
   if (_obStep === 3) {
