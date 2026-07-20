@@ -11,9 +11,7 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    html, body {
-      height: 100%;
-    }
+    html, body { height: 100%; overflow: hidden; }
     body {
       font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
       font-size: 14px;
@@ -22,8 +20,8 @@
       color: #1f2328;
       display: flex;
       flex-direction: column;
-      overflow: hidden;
     }
+    header { flex-shrink: 0; }
 
     header {
       background: #1e3a5f;
@@ -415,7 +413,7 @@
     .assumptions-bar .abtn:hover { background: #2a5298; }
 
     /* ── Main ── */
-    .main { flex: 1; padding: 22px; overflow-y: auto; overflow-x: auto; }
+    .main { flex: 1; min-width: 0; padding: 22px; overflow-y: auto; overflow-x: hidden; }
 
     .cards {
       display: grid;
@@ -457,7 +455,7 @@
     .scenario .sdetail { font-size: 11px; color: #57606a; margin-top: 6px; line-height: 1.6; }
 
     /* ── Chart ── */
-    .chart-wrap { width: 100%; overflow-x: auto; }
+    .chart-wrap { width: 100%; overflow-x: auto; min-width: 0; }
     svg.chart { display: block; }
 
     /* ── Accounts ── */
@@ -1799,6 +1797,7 @@ function renderSummaryCards(atRet, proj, totalSsnAnnual) {
   const ready       = monthly4pct * 12 >= retSpend;
   const yrsToRetY   = Math.max(0, num('y_retAge') - num('y_age'));
   const yrsToRetD   = Math.max(0, num('d_retAge') - num('d_age'));
+  const single      = isSingle();
 
   el('summaryCards').innerHTML = `
     <div class="card">
@@ -1806,11 +1805,11 @@ function renderSummaryCards(atRet, proj, totalSsnAnnual) {
       <div class="cvalue">${yrsToRetY} yrs</div>
       <div class="csub">Age ${num('y_age')} → ${num('y_retAge')}</div>
     </div>
-    <div class="card">
+    ${single ? '' : `<div class="card">
       <div class="clabel">${pName2()} Retires In</div>
       <div class="cvalue">${yrsToRetD} yrs</div>
       <div class="csub">Age ${num('d_age')} → ${num('d_retAge')}</div>
-    </div>
+    </div>`}
     <div class="card">
       <div class="clabel">Combined Nest Egg</div>
       <div class="cvalue">${fmtK(nest)}</div>
@@ -1910,8 +1909,8 @@ function renderChart(pBase, pCons, pOpt) {
   const markers = `
     <line x1="${rxY.toFixed(1)}" y1="${PT}" x2="${rxY.toFixed(1)}" y2="${PT+cH}" stroke="#3b82d4" stroke-width="1.5" stroke-dasharray="5,3"/>
     <text x="${(rxY+3).toFixed(1)}" y="${PT+12}" font-size="9" fill="#3b82d4">${pName1()} ret.</text>
-    <line x1="${rxD.toFixed(1)}" y1="${PT}" x2="${rxD.toFixed(1)}" y2="${PT+cH}" stroke="#7c5cd8" stroke-width="1.5" stroke-dasharray="5,3"/>
-    <text x="${(rxD+3).toFixed(1)}" y="${PT+22}" font-size="9" fill="#7c5cd8">${pName2()} ret.</text>`;
+    ${isSingle() ? '' : `<line x1="${rxD.toFixed(1)}" y1="${PT}" x2="${rxD.toFixed(1)}" y2="${PT+cH}" stroke="#7c5cd8" stroke-width="1.5" stroke-dasharray="5,3"/>
+    <text x="${(rxD+3).toFixed(1)}" y="${PT+22}" font-size="9" fill="#7c5cd8">${pName2()} ret.</text>`}`;
 
   const legend = `
     <circle cx="${PL}" cy="${PT+cH+36}" r="4" fill="#cf222e"/>
@@ -1936,9 +1935,10 @@ function renderBreakdown(atRet) {
   const yTotal = atRet.y401k + atRet.yRoth + atRet.yHSA;
   const dTotal = atRet.d401k + atRet.dRoth + atRet.dHSA;
   const grand  = yTotal + dTotal + atRet.jTaxable;
+  const single = isSingle();
 
   el('breakdown').innerHTML = `
-    <div class="person-accts">
+    <div class="person-accts" style="${single ? 'grid-template-columns:1fr;' : ''}">
       <div>
         <h4>${pName1()} <span style="font-weight:400;font-size:11px;">${fmtK(yTotal)}</span></h4>
         <div class="acct-grid">
@@ -1947,14 +1947,14 @@ function renderBreakdown(atRet) {
           <div class="acct"><div class="aname">HSA</div><div class="abal">${fmtK(atRet.yHSA)}</div><div class="anote">Triple tax</div></div>
         </div>
       </div>
-      <div>
+      ${single ? '' : `<div>
         <h4 class="dipti">${pName2()} <span style="font-weight:400;font-size:11px;">${fmtK(dTotal)}</span></h4>
         <div class="acct-grid">
           <div class="acct"><div class="aname">401K/IRA</div><div class="abal">${fmtK(atRet.d401k)}</div><div class="anote">Pre-tax</div></div>
           <div class="acct"><div class="aname">Roth IRA</div><div class="abal">${fmtK(atRet.dRoth)}</div><div class="anote">Tax-free</div></div>
           <div class="acct"><div class="aname">HSA</div><div class="abal">${fmtK(atRet.dHSA)}</div><div class="anote">Triple tax</div></div>
         </div>
-      </div>
+      </div>`}
     </div>
     <div style="margin-top:12px;padding-top:12px;border-top:1px solid #e5e7eb;">
       <div class="acct-grid">
@@ -2034,9 +2034,10 @@ function renderRothConversion(proj, projNoConv) {
   const bracketLabel = sel('j_rothBracket') === '0'
     ? 'Fixed amount (no bracket limit)'
     : 'Fill to bracket ceiling';
+  const _singleConv = isSingle();
   const guideRows = convRows.map(r => `<tr>
     <td>${r.curYashpalAge}</td>
-    <td>${r.curDiptiAge}</td>
+    ${_singleConv ? '' : `<td>${r.curDiptiAge}</td>`}
     <td style="color:#7c5cd8;font-weight:600;">${fmtK(r.convAmt)}</td>
     <td style="color:#b35000;">${fmtK(r.convTax)}</td>
     <td style="color:#8b949e;">${r.convBracketRoom != null ? fmtK(r.convBracketRoom) : '—'}</td>
@@ -2050,7 +2051,7 @@ function renderRothConversion(proj, projNoConv) {
     <div style="max-height:240px;overflow-y:auto;border:1px solid #e5e7eb;border-radius:6px;">
       <table>
         <thead><tr>
-          <th>${pName1()} Age</th><th>${pName2()} Age</th>
+          <th>${pName1()} Age</th>${_singleConv ? '' : `<th>${pName2()} Age</th>`}
           <th style="color:#7c5cd8;">Conv. Amount</th>
           <th style="color:#b35000;">Conv. Tax Paid</th>
           <th>Bracket Room</th>
@@ -2115,18 +2116,21 @@ function renderRothConversion(proj, projNoConv) {
 //  Year-by-Year Table
 // ══════════════════════════════════════════════════
 function renderYearTable(proj) {
-  const n1 = pName1();
-  const n2 = pName2();
+  const n1     = pName1();
+  const n2     = pName2();
+  const single = isSingle();
+  // single mode: hide all D columns — 5 fewer columns (D Age, D 401K draw, D Roth draw, D HSA draw, D RMD, D 401K bal, D Roth bal, D HSA bal)
+  const dCol   = single ? '' : null; // null = show, '' = hidden marker
   const head = `<thead>
     <tr>
       <th rowspan="2">${n1} Age</th>
-      <th rowspan="2">${n2} Age</th>
+      ${single ? '' : `<th rowspan="2">${n2} Age</th>`}
       <th rowspan="2">Phase</th>
       <th rowspan="2">Target Spend<br><span style="font-weight:400;text-transform:none;">(infl. adj.)</span></th>
       <th rowspan="2">SSN + Other<br><span style="font-weight:400;text-transform:none;">(income)</span></th>
       <th colspan="2" style="text-align:center;background:#f5f0ff;color:#5b21b6;">← Roth Conv →</th>
-      <th colspan="7" style="text-align:center;background:#fff7ed;color:#92400e;">← Voluntary Withdrawals →</th>
-      <th colspan="2" style="text-align:center;background:#fdf2f8;color:#7e1d6b;">RMD Forced</th>
+      <th colspan="${single ? 4 : 7}" style="text-align:center;background:#fff7ed;color:#92400e;">← Voluntary Withdrawals →</th>
+      <th colspan="${single ? 1 : 2}" style="text-align:center;background:#fdf2f8;color:#7e1d6b;">RMD Forced</th>
       <th rowspan="2">Total<br>Withdrawn</th>
       <th colspan="4" style="text-align:center;background:#fef9c3;color:#713f12;">← Tax by Source →</th>
       <th rowspan="2" style="background:#fef0c3;color:#713f12;">Fed Tax<br>Total</th>
@@ -2141,24 +2145,24 @@ function renderYearTable(proj) {
       <th style="background:#f5f0ff;color:#5b21b6;">Conv Tax</th>
       <th style="background:#fff7ed;">Joint Taxable</th>
       <th style="background:#fff7ed;">${n1} 401K</th>
-      <th style="background:#fff7ed;">${n2} 401K</th>
+      ${single ? '' : `<th style="background:#fff7ed;">${n2} 401K</th>`}
       <th style="background:#fff7ed;">${n1} Roth</th>
-      <th style="background:#fff7ed;">${n2} Roth</th>
+      ${single ? '' : `<th style="background:#fff7ed;">${n2} Roth</th>`}
       <th style="background:#fff7ed;">${n1} HSA</th>
-      <th style="background:#fff7ed;">${n2} HSA</th>
+      ${single ? '' : `<th style="background:#fff7ed;">${n2} HSA</th>`}
       <th style="background:#fdf2f8;">${n1} RMD</th>
-      <th style="background:#fdf2f8;">${n2} RMD</th>
+      ${single ? '' : `<th style="background:#fdf2f8;">${n2} RMD</th>`}
       <th style="background:#fef9c3;">Cap Gains<br>(Taxable)</th>
       <th style="background:#fef9c3;">Ord. Income<br>(401K/RMD)</th>
       <th style="background:#fef9c3;">On SSN</th>
       <th style="background:#fef9c3;">On Other<br>Income</th>
       <th style="background:#f0f9ff;">Joint Taxable</th>
       <th style="background:#f0f9ff;">${n1} 401K</th>
-      <th style="background:#f0f9ff;">${n2} 401K</th>
+      ${single ? '' : `<th style="background:#f0f9ff;">${n2} 401K</th>`}
       <th style="background:#f0f9ff;">${n1} Roth</th>
-      <th style="background:#f0f9ff;">${n2} Roth</th>
+      ${single ? '' : `<th style="background:#f0f9ff;">${n2} Roth</th>`}
       <th style="background:#f0f9ff;">${n1} HSA</th>
-      <th style="background:#f0f9ff;">${n2} HSA</th>
+      ${single ? '' : `<th style="background:#f0f9ff;">${n2} HSA</th>`}
     </tr>
   </thead>`;
 
@@ -2191,7 +2195,7 @@ function renderYearTable(proj) {
       : dash;
     return `<tr>
       <td>${r.curYashpalAge}</td>
-      <td>${r.curDiptiAge}</td>
+      ${single ? '' : `<td>${r.curDiptiAge}</td>`}
       <td><span style="font-size:11px;padding:1px 6px;border-radius:10px;font-weight:600;
         background:${isDistrib?'#fff7ed':'#f0fdf4'};
         color:${isDistrib?'#92400e':'#166534'};">${r.phase}</span></td>
@@ -2201,13 +2205,13 @@ function renderYearTable(proj) {
       ${convTaxCell}
       ${isDistrib ? drawCell(r.drawJ)    : dash}
       ${isDistrib ? drawCell(r.drawY401) : dash}
-      ${isDistrib ? drawCell(r.drawD401) : dash}
+      ${single ? '' : (isDistrib ? drawCell(r.drawD401) : dash)}
       ${isDistrib ? drawCell(r.drawYR)   : dash}
-      ${isDistrib ? drawCell(r.drawDR)   : dash}
+      ${single ? '' : (isDistrib ? drawCell(r.drawDR)   : dash)}
       ${isDistrib ? drawCell(r.drawYH)   : dash}
-      ${isDistrib ? drawCell(r.drawDH)   : dash}
+      ${single ? '' : (isDistrib ? drawCell(r.drawDH)   : dash)}
       ${isDistrib ? rmdCell(r.yRmdForced||0, r.yRmdMin||0) : dash}
-      ${isDistrib ? rmdCell(r.dRmdForced||0, r.dRmdMin||0) : dash}
+      ${single ? '' : (isDistrib ? rmdCell(r.dRmdForced||0, r.dRmdMin||0) : dash)}
       <td><strong>${isDistrib ? fmtK(r.totalWithdrawn) : '—'}</strong></td>
       ${isDistrib ? taxCell(r.taxOnTaxable||0) : dash}
       ${isDistrib ? taxCell(r.taxOn401k||0)    : dash}
@@ -2222,11 +2226,11 @@ function renderYearTable(proj) {
       ${effRate}
       <td style="background:#f0f9ff;">${fmtK(r.jTaxable)}</td>
       <td style="background:#f0f9ff;">${fmtK(r.y401k)}</td>
-      <td style="background:#f0f9ff;">${fmtK(r.d401k)}</td>
+      ${single ? '' : `<td style="background:#f0f9ff;">${fmtK(r.d401k)}</td>`}
       <td style="background:#f0f9ff;">${fmtK(r.yRoth)}</td>
-      <td style="background:#f0f9ff;">${fmtK(r.dRoth)}</td>
+      ${single ? '' : `<td style="background:#f0f9ff;">${fmtK(r.dRoth)}</td>`}
       <td style="background:#f0f9ff;">${fmtK(r.yHSA)}</td>
-      <td style="background:#f0f9ff;">${fmtK(r.dHSA)}</td>
+      ${single ? '' : `<td style="background:#f0f9ff;">${fmtK(r.dHSA)}</td>`}
       <td style="background:#f0f9ff;"><strong>${fmtK(r.total)}</strong></td>
     </tr>`;
   }).join('');
@@ -2248,20 +2252,20 @@ function renderYearTable(proj) {
   const totalConvTax = proj.reduce((a,r) => a+(r.convTax||0), 0);
 
   const totalsRow = `<tr style="${ts}">
-    <td colspan="3" style="${ts}color:#1e3a5f;">TOTALS / FINAL</td>
+    <td colspan="${single ? 2 : 3}" style="${ts}color:#1e3a5f;">TOTALS / FINAL</td>
     <td style="${ts}">${fmtK(totalSpendAll)}</td>
     <td style="${ts}">${fmtK(totalFixedAll)}</td>
     <td style="${ts}color:#5b21b6;">${fmtK(totalConvAmt)}</td>
     <td style="${ts}color:#7c5cd8;">${fmtK(totalConvTax)}</td>
     <td style="${ts}color:#b35000;">${fmtK(sum('drawJ'))}</td>
     <td style="${ts}color:#b35000;">${fmtK(sum('drawY401'))}</td>
-    <td style="${ts}color:#b35000;">${fmtK(sum('drawD401'))}</td>
+    ${single ? '' : `<td style="${ts}color:#b35000;">${fmtK(sum('drawD401'))}</td>`}
     <td style="${ts}color:#b35000;">${fmtK(sum('drawYR'))}</td>
-    <td style="${ts}color:#b35000;">${fmtK(sum('drawDR'))}</td>
+    ${single ? '' : `<td style="${ts}color:#b35000;">${fmtK(sum('drawDR'))}</td>`}
     <td style="${ts}color:#b35000;">${fmtK(sum('drawYH'))}</td>
-    <td style="${ts}color:#b35000;">${fmtK(sum('drawDH'))}</td>
+    ${single ? '' : `<td style="${ts}color:#b35000;">${fmtK(sum('drawDH'))}</td>`}
     <td style="${ts}color:#7e1d6b;">${fmtK(sum('yRmdForced'))}</td>
-    <td style="${ts}color:#7e1d6b;">${fmtK(sum('dRmdForced'))}</td>
+    ${single ? '' : `<td style="${ts}color:#7e1d6b;">${fmtK(sum('dRmdForced'))}</td>`}
     <td style="${ts}">${fmtK(totalWithdrawnAll)}</td>
     <td style="${ts}color:#713f12;">${fmtK(sum('taxOnTaxable'))}</td>
     <td style="${ts}color:#713f12;">${fmtK(sum('taxOn401k'))}</td>
@@ -2273,11 +2277,11 @@ function renderYearTable(proj) {
     <td style="${ts}color:#713f12;">${(avgEffRate*100).toFixed(1)}% avg</td>
     <td style="${ts}background:#e8f0fb;">${fmtK(last.jTaxable)}</td>
     <td style="${ts}background:#e8f0fb;">${fmtK(last.y401k)}</td>
-    <td style="${ts}background:#e8f0fb;">${fmtK(last.d401k)}</td>
+    ${single ? '' : `<td style="${ts}background:#e8f0fb;">${fmtK(last.d401k)}</td>`}
     <td style="${ts}background:#e8f0fb;">${fmtK(last.yRoth)}</td>
-    <td style="${ts}background:#e8f0fb;">${fmtK(last.dRoth)}</td>
+    ${single ? '' : `<td style="${ts}background:#e8f0fb;">${fmtK(last.dRoth)}</td>`}
     <td style="${ts}background:#e8f0fb;">${fmtK(last.yHSA)}</td>
-    <td style="${ts}background:#e8f0fb;">${fmtK(last.dHSA)}</td>
+    ${single ? '' : `<td style="${ts}background:#e8f0fb;">${fmtK(last.dHSA)}</td>`}
     <td style="${ts}background:#e8f0fb;">${fmtK(last.total)}</td>
   </tr>`;
 
@@ -2581,8 +2585,9 @@ function applyFields(data) {
 }
 
 // ── Helper: read person names (with fallback) ──
-const pName1 = () => (el('p_name1') || {}).value?.trim() || 'Person 1';
-const pName2 = () => (el('p_name2') || {}).value?.trim() || 'Person 2';
+const pName1  = () => (el('p_name1') || {}).value?.trim() || 'Person 1';
+const pName2  = () => (el('p_name2') || {}).value?.trim() || 'Person 2';
+const isSingle = () => (el('j_household') || {}).value === 'single';
 
 // ── Blank defaults for NEW users — no pre-filled numbers ──
 const DEFAULTS = {
