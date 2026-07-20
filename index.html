@@ -11,12 +11,18 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+    html, body {
+      height: 100%;
+    }
     body {
       font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
       font-size: 14px;
       line-height: 1.6;
       background: #f0f2f5;
       color: #1f2328;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
     }
 
     header {
@@ -301,7 +307,7 @@
     .settings-msg.ok  { background: #dcfce7; color: #166534; display: block; }
     .settings-msg.err { background: #fee2e2; color: #991b1b; display: block; }
 
-    .layout { display: flex; min-height: calc(100vh - 54px); }
+    .layout { display: flex; flex: 1; overflow: hidden; }
 
     /* ── Sidebar ── */
     .sidebar {
@@ -409,7 +415,7 @@
     .assumptions-bar .abtn:hover { background: #2a5298; }
 
     /* ── Main ── */
-    .main { flex: 1; padding: 22px; overflow-y: auto; }
+    .main { flex: 1; padding: 22px; overflow-y: auto; overflow-x: auto; }
 
     .cards {
       display: grid;
@@ -1903,9 +1909,9 @@ function renderChart(pBase, pCons, pOpt) {
   const rxD = xS(Math.max(0,Math.min(dRetYr,maxYr)));
   const markers = `
     <line x1="${rxY.toFixed(1)}" y1="${PT}" x2="${rxY.toFixed(1)}" y2="${PT+cH}" stroke="#3b82d4" stroke-width="1.5" stroke-dasharray="5,3"/>
-    <text x="${(rxY+3).toFixed(1)}" y="${PT+12}" font-size="9" fill="#3b82d4">Y ret.</text>
+    <text x="${(rxY+3).toFixed(1)}" y="${PT+12}" font-size="9" fill="#3b82d4">${pName1()} ret.</text>
     <line x1="${rxD.toFixed(1)}" y1="${PT}" x2="${rxD.toFixed(1)}" y2="${PT+cH}" stroke="#7c5cd8" stroke-width="1.5" stroke-dasharray="5,3"/>
-    <text x="${(rxD+3).toFixed(1)}" y="${PT+22}" font-size="9" fill="#7c5cd8">D ret.</text>`;
+    <text x="${(rxD+3).toFixed(1)}" y="${PT+22}" font-size="9" fill="#7c5cd8">${pName2()} ret.</text>`;
 
   const legend = `
     <circle cx="${PL}" cy="${PT+cH+36}" r="4" fill="#cf222e"/>
@@ -2044,7 +2050,7 @@ function renderRothConversion(proj, projNoConv) {
     <div style="max-height:240px;overflow-y:auto;border:1px solid #e5e7eb;border-radius:6px;">
       <table>
         <thead><tr>
-          <th>Y Age</th><th>D Age</th>
+          <th>${pName1()} Age</th><th>${pName2()} Age</th>
           <th style="color:#7c5cd8;">Conv. Amount</th>
           <th style="color:#b35000;">Conv. Tax Paid</th>
           <th>Bracket Room</th>
@@ -2109,10 +2115,12 @@ function renderRothConversion(proj, projNoConv) {
 //  Year-by-Year Table
 // ══════════════════════════════════════════════════
 function renderYearTable(proj) {
+  const n1 = pName1();
+  const n2 = pName2();
   const head = `<thead>
     <tr>
-      <th rowspan="2">Y Age</th>
-      <th rowspan="2">D Age</th>
+      <th rowspan="2">${n1} Age</th>
+      <th rowspan="2">${n2} Age</th>
       <th rowspan="2">Phase</th>
       <th rowspan="2">Target Spend<br><span style="font-weight:400;text-transform:none;">(infl. adj.)</span></th>
       <th rowspan="2">SSN + Other<br><span style="font-weight:400;text-transform:none;">(income)</span></th>
@@ -2132,25 +2140,25 @@ function renderYearTable(proj) {
       <th style="background:#f5f0ff;color:#5b21b6;">Conv Amt</th>
       <th style="background:#f5f0ff;color:#5b21b6;">Conv Tax</th>
       <th style="background:#fff7ed;">Joint Taxable</th>
-      <th style="background:#fff7ed;">Y 401K/IRA</th>
-      <th style="background:#fff7ed;">D 401K/IRA</th>
-      <th style="background:#fff7ed;">Y Roth</th>
-      <th style="background:#fff7ed;">D Roth</th>
-      <th style="background:#fff7ed;">Y HSA</th>
-      <th style="background:#fff7ed;">D HSA</th>
-      <th style="background:#fdf2f8;">Y RMD</th>
-      <th style="background:#fdf2f8;">D RMD</th>
+      <th style="background:#fff7ed;">${n1} 401K</th>
+      <th style="background:#fff7ed;">${n2} 401K</th>
+      <th style="background:#fff7ed;">${n1} Roth</th>
+      <th style="background:#fff7ed;">${n2} Roth</th>
+      <th style="background:#fff7ed;">${n1} HSA</th>
+      <th style="background:#fff7ed;">${n2} HSA</th>
+      <th style="background:#fdf2f8;">${n1} RMD</th>
+      <th style="background:#fdf2f8;">${n2} RMD</th>
       <th style="background:#fef9c3;">Cap Gains<br>(Taxable)</th>
       <th style="background:#fef9c3;">Ord. Income<br>(401K/RMD)</th>
       <th style="background:#fef9c3;">On SSN</th>
       <th style="background:#fef9c3;">On Other<br>Income</th>
       <th style="background:#f0f9ff;">Joint Taxable</th>
-      <th style="background:#f0f9ff;">Y 401K/IRA</th>
-      <th style="background:#f0f9ff;">D 401K/IRA</th>
-      <th style="background:#f0f9ff;">Y Roth</th>
-      <th style="background:#f0f9ff;">D Roth</th>
-      <th style="background:#f0f9ff;">Y HSA</th>
-      <th style="background:#f0f9ff;">D HSA</th>
+      <th style="background:#f0f9ff;">${n1} 401K</th>
+      <th style="background:#f0f9ff;">${n2} 401K</th>
+      <th style="background:#f0f9ff;">${n1} Roth</th>
+      <th style="background:#f0f9ff;">${n2} Roth</th>
+      <th style="background:#f0f9ff;">${n1} HSA</th>
+      <th style="background:#f0f9ff;">${n2} HSA</th>
     </tr>
   </thead>`;
 
