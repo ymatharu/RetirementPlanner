@@ -1418,11 +1418,11 @@ function project(rate, conv = {}, overrides = {}) {
   let dHSA    = num('d_hsa');
   let jTaxable= num('j_taxable');
 
-  // Both still working? Last retirement is when accumulation ends
-  const lastRet = Math.max(yRet, dRet);
-  // Start from youngest current age; simulate in calendar years
-  const startYear = Math.min(yAge, dAge);
-  const endYear   = Math.max(yLife, dLife);
+  // For single filers d_age/d_retAge/d_lifeExp are blank/zero — ignore them
+  const _single   = (el('j_household') || {}).value === 'single';
+  // Start from person 1's age; for couples use the younger of the two
+  const startYear = _single ? yAge : Math.min(yAge, dAge);
+  const endYear   = _single ? yLife : Math.max(yLife, dLife);
 
   const rows = [];
 
@@ -1430,8 +1430,8 @@ function project(rate, conv = {}, overrides = {}) {
     const curYashpalAge = yAge + yr;
     const curDiptiAge   = dAge + yr;
 
-    const yWorking = curYashpalAge < yRet;
-    const dWorking = curDiptiAge   < dRet;
+    const yWorking   = curYashpalAge < yRet;
+    const dWorking   = !_single && (curDiptiAge < dRet);
     const anyWorking = yWorking || dWorking;
 
     const inflFactor = Math.pow(1 + inflRate, yr);
