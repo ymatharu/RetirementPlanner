@@ -1501,6 +1501,7 @@ function project(rate, conv = {}, overrides = {}) {
                                            married, stateTaxRate: stateTax, deductionAmt });
           convTax     = convTaxResult.totalTax - baseTaxResult.totalTax;
           jTaxable   -= convTax; // pay tax from taxable account
+          jTaxable    = Math.max(0, jTaxable); // never go negative
         }
       }
     } else {
@@ -1681,6 +1682,15 @@ function project(rate, conv = {}, overrides = {}) {
           }
         }
       }
+
+      // Clamp all accounts to zero before growing — prevents negative balances compounding
+      y401k    = Math.max(0, y401k);
+      d401k    = Math.max(0, d401k);
+      yRoth    = Math.max(0, yRoth);
+      dRoth    = Math.max(0, dRoth);
+      yHSA     = Math.max(0, yHSA);
+      dHSA     = Math.max(0, dHSA);
+      jTaxable = Math.max(0, jTaxable);
 
       // Grow remaining
       y401k    *= (1 + rate); d401k    *= (1 + rate);
