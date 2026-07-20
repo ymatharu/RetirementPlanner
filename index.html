@@ -1708,6 +1708,14 @@ function project(rate, conv = {}, overrides = {}) {
       // Note: convAmt / convTax are set on the outer let variables and pushed separately on row.
     }
 
+    // Final clamp — ensure no account is negative before recording the row
+    y401k    = Math.max(0, y401k);
+    d401k    = Math.max(0, d401k);
+    yRoth    = Math.max(0, yRoth);
+    dRoth    = Math.max(0, dRoth);
+    yHSA     = Math.max(0, yHSA);
+    dHSA     = Math.max(0, dHSA);
+    jTaxable = Math.max(0, jTaxable);
     const total = y401k + yRoth + yHSA + d401k + dRoth + dHSA + jTaxable;
     rows.push({
       yr, curYashpalAge, curDiptiAge,
