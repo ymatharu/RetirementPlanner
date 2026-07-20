@@ -168,6 +168,69 @@
     }
     .auth-guest-btn:hover { background: #f7f8fa; }
 
+    /* ── Onboarding wizard ── */
+    #onboardOverlay {
+      position: fixed; inset: 0; background: rgba(30,58,95,.92);
+      display: none; align-items: center; justify-content: center;
+      z-index: 900; backdrop-filter: blur(4px); padding: 20px;
+    }
+    #onboardOverlay.open { display: flex; }
+    .onboard-card {
+      background: #fff; border-radius: 12px; width: 100%; max-width: 520px;
+      max-height: 90vh; overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,.25);
+    }
+    .onboard-header {
+      background: #1e3a5f; color: #fff; padding: 22px 28px 18px;
+      border-radius: 12px 12px 0 0;
+    }
+    .onboard-header h2 { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+    .onboard-header p  { font-size: 12px; opacity: .8; }
+    .onboard-step { padding: 22px 28px; }
+    .onboard-step h3 {
+      font-size: 13px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .6px; color: #57606a; margin-bottom: 14px;
+      padding-bottom: 6px; border-bottom: 1px solid #e5e7eb;
+    }
+    .onboard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .onboard-grid.single { grid-template-columns: 1fr; }
+    .onboard-field { display: flex; flex-direction: column; gap: 3px; }
+    .onboard-field label { font-size: 11px; font-weight: 600; color: #57606a; text-transform: uppercase; letter-spacing: .4px; }
+    .onboard-field input, .onboard-field select {
+      padding: 7px 10px; border: 1px solid #d0d7de; border-radius: 5px;
+      font-size: 13px; background: #fafafa;
+    }
+    .onboard-field input:focus, .onboard-field select:focus {
+      outline: none; border-color: #3b82d4; background: #fff;
+    }
+    .onboard-ht {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 18px;
+    }
+    .ht-btn {
+      padding: 14px 10px; border: 2px solid #d0d7de; border-radius: 8px;
+      background: #f7f8fa; cursor: pointer; text-align: center;
+      transition: all .15s;
+    }
+    .ht-btn:hover { border-color: #3b82d4; background: #eff6ff; }
+    .ht-btn.selected { border-color: #1e3a5f; background: #eff6ff; }
+    .ht-btn .ht-icon { font-size: 26px; margin-bottom: 4px; }
+    .ht-btn .ht-label { font-size: 13px; font-weight: 700; color: #1e3a5f; }
+    .ht-btn .ht-sub   { font-size: 11px; color: #57606a; margin-top: 2px; }
+    .onboard-footer {
+      padding: 14px 28px 22px; display: flex; gap: 10px; justify-content: flex-end;
+      border-top: 1px solid #e5e7eb;
+    }
+    .onboard-btn {
+      padding: 9px 24px; background: #1e3a5f; color: #fff;
+      border: none; border-radius: 6px; font-size: 13px; font-weight: 600;
+      cursor: pointer; transition: background .15s;
+    }
+    .onboard-btn:hover { background: #2a5298; }
+    .onboard-btn.secondary {
+      background: #fff; color: #57606a; border: 1px solid #d0d7de;
+    }
+    .onboard-btn.secondary:hover { background: #f7f8fa; }
+
     /* ── New / Rename Plan modal (Phase 2) ── */
     #planModal {
       position: fixed; inset: 0; background: rgba(0,0,0,.45);
@@ -554,6 +617,159 @@
   </div>
 </div>
 
+<!-- ══ Onboarding Wizard (new users) ══ -->
+<div id="onboardOverlay">
+  <div class="onboard-card">
+    <div class="onboard-header">
+      <h2>Welcome to Retirement Planner</h2>
+      <p>Let's set up your first plan — takes about 2 minutes</p>
+    </div>
+
+    <!-- Step 1: Household type -->
+    <div class="onboard-step" id="ob-step1">
+      <h3>Step 1 of 3 — Household Type</h3>
+      <div class="onboard-ht">
+        <div class="ht-btn selected" id="ht-couple" onclick="selectHouseholdType('couple')">
+          <div class="ht-icon">👫</div>
+          <div class="ht-label">Couple</div>
+          <div class="ht-sub">Two people planning together</div>
+        </div>
+        <div class="ht-btn" id="ht-single" onclick="selectHouseholdType('single')">
+          <div class="ht-icon">🧑</div>
+          <div class="ht-label">Individual</div>
+          <div class="ht-sub">Planning on your own</div>
+        </div>
+      </div>
+      <div class="onboard-grid" id="ob-names-grid">
+        <div class="onboard-field">
+          <label>Your Name</label>
+          <input type="text" id="ob_name1" placeholder="e.g. Alex" maxlength="30"/>
+        </div>
+        <div class="onboard-field" id="ob-name2-wrap">
+          <label>Partner's Name</label>
+          <input type="text" id="ob_name2" placeholder="e.g. Jordan" maxlength="30"/>
+        </div>
+      </div>
+      <div class="onboard-field" style="margin-top:10px;">
+        <label>Plan Name</label>
+        <input type="text" id="ob_planName" placeholder="e.g. Our Retirement Plan" maxlength="60" value="My Retirement Plan"/>
+      </div>
+    </div>
+
+    <!-- Step 2: Person 1 details -->
+    <div class="onboard-step" id="ob-step2" style="display:none;">
+      <h3 id="ob-step2-title">Step 2 of 3 — Your Details</h3>
+      <div class="onboard-grid">
+        <div class="onboard-field">
+          <label>Current Age</label>
+          <input type="number" id="ob_y_age" min="18" max="80" placeholder="e.g. 45"/>
+        </div>
+        <div class="onboard-field">
+          <label>Retirement Age</label>
+          <input type="number" id="ob_y_retAge" min="40" max="80" placeholder="e.g. 65"/>
+        </div>
+        <div class="onboard-field">
+          <label>Life Expectancy</label>
+          <input type="number" id="ob_y_lifeExp" min="70" max="110" placeholder="e.g. 90"/>
+        </div>
+        <div class="onboard-field">
+          <label>Annual Salary ($)</label>
+          <input type="number" id="ob_y_salary" min="0" placeholder="e.g. 120000"/>
+        </div>
+        <div class="onboard-field">
+          <label>401K / IRA ($)</label>
+          <input type="number" id="ob_y_401k" min="0" placeholder="e.g. 500000"/>
+        </div>
+        <div class="onboard-field">
+          <label>Roth IRA ($)</label>
+          <input type="number" id="ob_y_roth" min="0" placeholder="e.g. 50000"/>
+        </div>
+        <div class="onboard-field">
+          <label>HSA ($)</label>
+          <input type="number" id="ob_y_hsa" min="0" placeholder="e.g. 20000"/>
+        </div>
+        <div class="onboard-field">
+          <label>SSN Monthly (at 67)</label>
+          <input type="number" id="ob_y_ssn67" min="0" placeholder="e.g. 2800"/>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 3: Person 2 details (couple only) + Joint -->
+    <div class="onboard-step" id="ob-step3" style="display:none;">
+      <h3 id="ob-step3-title">Step 3 of 3 — Partner &amp; Additional Info</h3>
+      <div id="ob-p2-section">
+        <div class="onboard-grid" id="ob-p2-grid">
+          <div class="onboard-field">
+            <label>Partner's Current Age</label>
+            <input type="number" id="ob_d_age" min="18" max="80" placeholder="e.g. 43"/>
+          </div>
+          <div class="onboard-field">
+            <label>Partner's Retirement Age</label>
+            <input type="number" id="ob_d_retAge" min="40" max="80" placeholder="e.g. 62"/>
+          </div>
+          <div class="onboard-field">
+            <label>Partner's Life Expectancy</label>
+            <input type="number" id="ob_d_lifeExp" min="70" max="110" placeholder="e.g. 92"/>
+          </div>
+          <div class="onboard-field">
+            <label>Partner's 401K / IRA ($)</label>
+            <input type="number" id="ob_d_401k" min="0" placeholder="e.g. 300000"/>
+          </div>
+          <div class="onboard-field">
+            <label>Partner's SSN Monthly (at 67)</label>
+            <input type="number" id="ob_d_ssn67" min="0" placeholder="e.g. 2200"/>
+          </div>
+          <div class="onboard-field">
+            <label>Marital Status</label>
+            <select id="ob_marital">
+              <option value="M" selected>Married</option>
+              <option value="S">Single / Domestic Partner</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:14px;">
+        <h4 id="ob-step3-joint-title" style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#57606a;margin-bottom:10px;padding-bottom:6px;border-top:1px solid #e5e7eb;padding-top:14px;">Additional Info</h4>
+        <div class="onboard-grid">
+          <div class="onboard-field">
+            <label id="ob-taxable-label">Taxable / Brokerage ($)</label>
+            <input type="number" id="ob_j_taxable" min="0" placeholder="e.g. 200000"/>
+          </div>
+          <div class="onboard-field">
+            <label>Desired Retirement Spend / yr ($)</label>
+            <input type="number" id="ob_j_retSpend" min="0" placeholder="e.g. 80000"/>
+          </div>
+          <div class="onboard-field">
+            <label>State of Retirement</label>
+            <select id="ob_j_state">
+              <option value="CA">California (CA)</option>
+              <option value="FL">Florida (FL) – No income tax</option>
+              <option value="TX">Texas (TX) – No income tax</option>
+              <option value="NY">New York (NY)</option>
+              <option value="WA">Washington (WA)</option>
+              <option value="NV">Nevada (NV)</option>
+              <option value="AZ">Arizona (AZ)</option>
+              <option value="OR">Oregon (OR)</option>
+              <option value="CO">Colorado (CO)</option>
+              <option value="OTHER">Other</option>
+            </select>
+          </div>
+          <div class="onboard-field">
+            <label>Other Income / yr (dividends…)</label>
+            <input type="number" id="ob_j_otherIncome" min="0" placeholder="e.g. 5000"/>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="onboard-footer">
+      <button class="onboard-btn secondary" id="ob-back-btn" onclick="obBack()" style="display:none;">Back</button>
+      <button class="onboard-btn" id="ob-next-btn" onclick="obNext()">Next →</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══ New / Rename Plan Modal (Phase 2) ══ -->
 <div id="planModal">
   <div class="plan-modal-card">
@@ -609,14 +825,18 @@
   <aside class="sidebar" id="sidebar">
   <div class="sidebar-inner">
     <div class="person-tabs">
-      <div class="ptab active" onclick="switchTab('yashpal')">Yashpal</div>
-      <div class="ptab" onclick="switchTab('dipti')">Dipti</div>
+      <div class="ptab active" onclick="switchTab('yashpal')" id="tab-btn-y">Person 1</div>
+      <div class="ptab" onclick="switchTab('dipti')" id="tab-btn-d" style="">Person 2</div>
       <div class="ptab" onclick="switchTab('joint')">Joint</div>
     </div>
 
-    <!-- ── YASHPAL ── -->
+    <!-- ── PERSON 1 ── -->
     <div class="tab-panel active" id="tab-yashpal">
       <div class="section-label">Personal</div>
+      <div class="field">
+        <label>Name</label>
+        <input type="text" id="p_name1" value="Person 1" maxlength="30" oninput="updateNames()"/>
+      </div>
       <div class="inline2">
         <div class="field"><label>Current Age</label><input type="number" id="y_age" min="18" max="80" value="61"/></div>
         <div class="field"><label>Retirement Age</label><input type="number" id="y_retAge" min="40" max="80" value="65"/></div>
@@ -645,16 +865,28 @@
         <div class="field"><label>SSN at 70 / mo</label><input type="number" id="y_ssn70" value="5192"/></div>
       </div>
 
-      <div class="section-label">Accounts ($)</div>
+      <div class="section-label">Accounts — Balance ($)</div>
       <div class="field"><label>401K / IRA</label><input type="number" id="y_401k" value="3000000"/></div>
       <div class="field"><label>Roth IRA</label><input type="number" id="y_roth" value="75000"/></div>
       <div class="field"><label>HSA</label><input type="number" id="y_hsa" value="75000"/></div>
       <div class="field"><label>Pension (annual $)</label><input type="number" id="y_pension" value="0"/></div>
+
+      <div class="section-label">Annual Contributions ($)</div>
+      <div class="hint" style="margin-bottom:6px;">Each grows with inflation during working years</div>
+      <div class="inline2">
+        <div class="field"><label>401K / IRA</label><input type="number" id="y_contrib_401k" min="0" value="23000"/></div>
+        <div class="field"><label>Roth IRA</label><input type="number" id="y_contrib_roth" min="0" value="7000"/></div>
+      </div>
+      <div class="field"><label>HSA</label><input type="number" id="y_contrib_hsa" min="0" value="4150"/></div>
     </div>
 
-    <!-- ── DIPTI ── -->
+    <!-- ── PERSON 2 ── -->
     <div class="tab-panel" id="tab-dipti">
       <div class="section-label">Personal</div>
+      <div class="field">
+        <label>Name</label>
+        <input type="text" id="p_name2" value="Person 2" maxlength="30" oninput="updateNames()"/>
+      </div>
       <div class="inline2">
         <div class="field"><label>Current Age</label><input type="number" id="d_age" min="18" max="80" value="60"/></div>
         <div class="field"><label>Retirement Age</label><input type="number" id="d_retAge" min="40" max="80" value="60"/></div>
@@ -683,15 +915,31 @@
         <div class="field"><label>SSN at 70 / mo</label><input type="number" id="d_ssn70" value="4267"/></div>
       </div>
 
-      <div class="section-label">Accounts ($)</div>
+      <div class="section-label">Accounts — Balance ($)</div>
       <div class="field"><label>401K / IRA</label><input type="number" id="d_401k" value="1700000"/></div>
       <div class="field"><label>Roth IRA</label><input type="number" id="d_roth" value="0"/></div>
       <div class="field"><label>HSA</label><input type="number" id="d_hsa" value="25000"/></div>
       <div class="field"><label>Pension (annual $)</label><input type="number" id="d_pension" value="0"/></div>
+
+      <div class="section-label">Annual Contributions ($)</div>
+      <div class="hint" style="margin-bottom:6px;">Each grows with inflation during working years</div>
+      <div class="inline2">
+        <div class="field"><label>401K / IRA</label><input type="number" id="d_contrib_401k" min="0" value="23000"/></div>
+        <div class="field"><label>Roth IRA</label><input type="number" id="d_contrib_roth" min="0" value="7000"/></div>
+      </div>
+      <div class="field"><label>HSA</label><input type="number" id="d_contrib_hsa" min="0" value="4150"/></div>
     </div>
 
     <!-- ── JOINT ── -->
     <div class="tab-panel" id="tab-joint">
+      <div class="section-label">Household</div>
+      <div class="field">
+        <label>Household Type</label>
+        <select id="j_household" onchange="applyHouseholdType(); calculate();">
+          <option value="couple">Couple (two people)</option>
+          <option value="single">Individual (one person)</option>
+        </select>
+      </div>
       <div class="section-label">Location &amp; Status</div>
       <div class="field">
         <label>State of Retirement</label>
@@ -719,13 +967,14 @@
       <div class="section-label">Household Finances</div>
       <div class="field"><label>Other Income / Year (dividends, rent…)</label><input type="number" id="j_otherIncome" value="45000"/></div>
       <div class="field"><label>Current Household Spend / Year ($)</label><input type="number" id="j_currentSpend" value="200000"/></div>
-      <div class="field"><label>Annual Savings / Year ($)</label><input type="number" id="j_savings" value="35000"/>
-        <div class="hint">Added to investments each year until last person retires</div>
-      </div>
       <div class="field"><label>Desired Spend in Retirement / Year ($)</label><input type="number" id="j_retSpend" value="225000"/></div>
 
       <div class="section-label">Joint / Taxable Accounts ($)</div>
-      <div class="field"><label>Taxable / Brokerage (Joint)</label><input type="number" id="j_taxable" value="8000000"/></div>
+      <div class="field"><label>Taxable / Brokerage Balance</label><input type="number" id="j_taxable" value="8000000"/></div>
+      <div class="field"><label>Annual Taxable Contribution ($)</label>
+        <input type="number" id="j_contrib_taxable" min="0" value="10000"/>
+        <div class="hint">Added to taxable/brokerage each year until last person retires. Grows with inflation.</div>
+      </div>
 
       <div class="section-label">Tax Deductions</div>
       <div class="field">
@@ -776,12 +1025,12 @@
       </div>
       <div id="rothConvFields" style="display:none;">
         <div class="inline2">
-          <div class="field"><label>Yashpal Start Age</label><input type="number" id="j_rothStartY" value="62" min="50" max="74" oninput="calculate();"/></div>
-          <div class="field"><label>Yashpal End Age</label><input type="number" id="j_rothEndY"   value="74" min="50" max="74" oninput="calculate();"/></div>
+          <div class="field"><label id="lbl-rothStartY">P1 Start Age</label><input type="number" id="j_rothStartY" value="62" min="50" max="74" oninput="calculate();"/></div>
+          <div class="field"><label id="lbl-rothEndY">P1 End Age</label><input type="number" id="j_rothEndY"   value="74" min="50" max="74" oninput="calculate();"/></div>
         </div>
         <div class="inline2">
-          <div class="field"><label>Dipti Start Age</label><input type="number" id="j_rothStartD" value="60" min="50" max="74" oninput="calculate();"/></div>
-          <div class="field"><label>Dipti End Age</label><input type="number" id="j_rothEndD"   value="74" min="50" max="74" oninput="calculate();"/></div>
+          <div class="field"><label id="lbl-rothStartD">P2 Start Age</label><input type="number" id="j_rothStartD" value="60" min="50" max="74" oninput="calculate();"/></div>
+          <div class="field"><label id="lbl-rothEndD">P2 End Age</label><input type="number" id="j_rothEndD"   value="74" min="50" max="74" oninput="calculate();"/></div>
         </div>
         <div class="field">
           <label>Annual Conversion Amount ($)</label>
@@ -1058,6 +1307,22 @@ function initSidebarToggle() {
 // ══════════════════════════════════════════════════
 //  Tab switching
 // ══════════════════════════════════════════════════
+// ── updateNames — called when p_name1 or p_name2 inputs change ──
+function updateNames() {
+  const n1 = pName1();
+  const n2 = pName2();
+  // Tab buttons
+  const tabY = el('tab-btn-y'); if (tabY) tabY.textContent = n1;
+  const tabD = el('tab-btn-d'); if (tabD) tabD.textContent = n2;
+  // Roth conversion field labels
+  const ly1 = el('lbl-rothStartY'); if (ly1) ly1.textContent = n1 + ' Start Age';
+  const ly2 = el('lbl-rothEndY');   if (ly2) ly2.textContent = n1 + ' End Age';
+  const ld1 = el('lbl-rothStartD'); if (ld1) ld1.textContent = n2 + ' Start Age';
+  const ld2 = el('lbl-rothEndD');   if (ld2) ld2.textContent = n2 + ' End Age';
+  // Re-render dashboard cards/charts that show names
+  calculate();
+}
+
 function switchTab(name) {
   document.querySelectorAll('.ptab').forEach((t,i) => {
     const tabs = ['yashpal','dipti','joint'];
@@ -1108,9 +1373,16 @@ function project(rate, conv = {}, overrides = {}) {
   const dPension= num('d_pension');
 
   // Joint
-  const otherInc  = num('j_otherIncome');
-  const retSpend  = num('j_retSpend');
-  const annSavings= num('j_savings');
+  const otherInc       = num('j_otherIncome');
+  const retSpend       = num('j_retSpend');
+  // Per-account annual contributions (today's dollars; inflated each accumulation year)
+  const yC401k         = num('y_contrib_401k');
+  const yCRoth         = num('y_contrib_roth');
+  const yCHsa          = num('y_contrib_hsa');
+  const dC401k         = num('d_contrib_401k');
+  const dCRoth         = num('d_contrib_roth');
+  const dCHsa          = num('d_contrib_hsa');
+  const jCTaxable      = num('j_contrib_taxable');
   const inflRate       = num('j_inflRate') / 100;
   const stateKey       = sel('j_state');
   const stateTax       = (STATE_TAX[stateKey] || 0) / 100;
@@ -1166,19 +1438,25 @@ function project(rate, conv = {}, overrides = {}) {
     let convAmt = 0, convTax = 0, convBracketRoom = 0;
 
     if (anyWorking) {
-      // Accumulation: grow + add savings
+      // Accumulation: grow accounts then add inflation-adjusted contributions
       const grow = 1 + rate;
       y401k    *= grow; d401k    *= grow;
       yRoth    *= grow; dRoth    *= grow;
       yHSA     *= grow; dHSA     *= grow;
       jTaxable *= grow;
-      // Distribute new savings proportionally
-      y401k    += annSavings * 0.35;
-      d401k    += annSavings * 0.25;
-      yRoth    += annSavings * 0.10;
-      jTaxable += annSavings * 0.20;
-      yHSA     += annSavings * 0.05;
-      dHSA     += annSavings * 0.05;
+      // Contributions grow with inflation — only add while that person is still working
+      if (yWorking) {
+        y401k    += yC401k    * inflFactor;
+        yRoth    += yCRoth    * inflFactor;
+        yHSA     += yCHsa     * inflFactor;
+      }
+      if (dWorking) {
+        d401k    += dC401k    * inflFactor;
+        dRoth    += dCRoth    * inflFactor;
+        dHSA     += dCHsa     * inflFactor;
+      }
+      // Joint taxable contribution while either person is working
+      jTaxable   += jCTaxable  * inflFactor;
 
       // ── Roth conversion ──
       if (conv.enabled) {
@@ -1500,7 +1778,7 @@ function calculate() {
   const ss = el('sidebarResultSub');
   sv.textContent = fmtK(finalVal);
   sv.style.color = finalVal > 0 ? '#1a7f37' : '#cf222e';
-  ss.textContent = `at Yashpal age ${finalAge}  •  ${finalVal > 0 ? 'surplus' : 'shortfall'}`;
+  ss.textContent = `at ${pName1()} age ${finalAge}  •  ${finalVal > 0 ? 'surplus' : 'shortfall'}`;
   sr.style.display = '';
 }
 
@@ -1518,12 +1796,12 @@ function renderSummaryCards(atRet, proj, totalSsnAnnual) {
 
   el('summaryCards').innerHTML = `
     <div class="card">
-      <div class="clabel">Yashpal Retires In</div>
+      <div class="clabel">${pName1()} Retires In</div>
       <div class="cvalue">${yrsToRetY} yrs</div>
       <div class="csub">Age ${num('y_age')} → ${num('y_retAge')}</div>
     </div>
     <div class="card">
-      <div class="clabel">Dipti Retires In</div>
+      <div class="clabel">${pName2()} Retires In</div>
       <div class="cvalue">${yrsToRetD} yrs</div>
       <div class="csub">Age ${num('d_age')} → ${num('d_retAge')}</div>
     </div>
@@ -1636,7 +1914,7 @@ function renderChart(pBase, pCons, pOpt) {
     <text x="${PL+108}" y="${PT+cH+40}" font-size="10" fill="#57606a">Base</text>
     <circle cx="${PL+150}" cy="${PT+cH+36}" r="4" fill="#1a7f37"/>
     <text x="${PL+158}" y="${PT+cH+40}" font-size="10" fill="#57606a">Optimistic</text>
-    <text x="${W/2}" y="${PT+cH+40}" text-anchor="middle" font-size="10" fill="#8b949e">Yashpal's Age</text>`;
+    <text x="${W/2}" y="${PT+cH+40}" text-anchor="middle" font-size="10" fill="#8b949e">${pName1()}'s Age</text>`;
 
   el('chartWrap').innerHTML = `<svg class="chart" viewBox="0 0 ${W} ${H+30}" xmlns="http://www.w3.org/2000/svg">
     ${yLabels}${xLabels}${markers}
@@ -1656,7 +1934,7 @@ function renderBreakdown(atRet) {
   el('breakdown').innerHTML = `
     <div class="person-accts">
       <div>
-        <h4>Yashpal <span style="font-weight:400;font-size:11px;">${fmtK(yTotal)}</span></h4>
+        <h4>${pName1()} <span style="font-weight:400;font-size:11px;">${fmtK(yTotal)}</span></h4>
         <div class="acct-grid">
           <div class="acct"><div class="aname">401K/IRA</div><div class="abal">${fmtK(atRet.y401k)}</div><div class="anote">Pre-tax</div></div>
           <div class="acct"><div class="aname">Roth IRA</div><div class="abal">${fmtK(atRet.yRoth)}</div><div class="anote">Tax-free</div></div>
@@ -1664,7 +1942,7 @@ function renderBreakdown(atRet) {
         </div>
       </div>
       <div>
-        <h4 class="dipti">Dipti <span style="font-weight:400;font-size:11px;">${fmtK(dTotal)}</span></h4>
+        <h4 class="dipti">${pName2()} <span style="font-weight:400;font-size:11px;">${fmtK(dTotal)}</span></h4>
         <div class="acct-grid">
           <div class="acct"><div class="aname">401K/IRA</div><div class="abal">${fmtK(atRet.d401k)}</div><div class="anote">Pre-tax</div></div>
           <div class="acct"><div class="aname">Roth IRA</div><div class="abal">${fmtK(atRet.dRoth)}</div><div class="anote">Tax-free</div></div>
@@ -1691,7 +1969,7 @@ function renderSSN(ySsn, dSsn, yChosen, dChosen) {
   const tbl = (ssn, chosen, life, name, cls) => `
     <div>
       <table>
-        <thead><tr><th colspan="3">${name} SSN <span class="tag ${cls}">${cls === 'y' ? 'Yashpal' : 'Dipti'}</span></th></tr>
+        <thead><tr><th colspan="3">${name} SSN <span class="tag ${cls}">${cls === 'y' ? pName1() : pName2()}</span></th></tr>
           <tr><th>Claim Age</th><th>Monthly</th><th>Lifetime to ${life}</th></tr></thead>
         <tbody>
           ${ages.map(a => `<tr class="${a===chosen?'hl':''}">
@@ -1704,8 +1982,8 @@ function renderSSN(ySsn, dSsn, yChosen, dChosen) {
     </div>`;
 
   el('ssnGrid').innerHTML =
-    tbl(ySsn, yChosen, lifeY, 'Yashpal', 'y') +
-    tbl(dSsn, dChosen, lifeD, 'Dipti', 'd');
+    tbl(ySsn, yChosen, lifeY, pName1(), 'y') +
+    tbl(dSsn, dChosen, lifeD, pName2(), 'd');
 }
 
 // ══════════════════════════════════════════════════
@@ -2008,8 +2286,8 @@ function exportToExcel() {
 
   // ── Column definitions ──
   const COLS = [
-    { h: 'Yashpal Age',         v: r => r.curYashpalAge },
-    { h: 'Dipti Age',           v: r => r.curDiptiAge   },
+    { h: pName1() + ' Age',     v: r => r.curYashpalAge },
+    { h: pName2() + ' Age',     v: r => r.curDiptiAge   },
     { h: 'Phase',               v: r => r.phase         },
     { h: 'Target Spend (Infl.Adj.)', v: r => r.phase === 'Distribution' ? n(r.spendReal)       : '' },
     { h: 'SSN + Other Income',  v: r => r.phase === 'Distribution'
@@ -2071,7 +2349,7 @@ function exportToExcel() {
   // Each entry: [ section-or-null, label, field-id ]
   // A null section means it's a section header row, not a data row.
   const INPUT_PARAMS = [
-    [null, 'YASHPAL', null],
+    [null, pName1().toUpperCase(), null],
     ['Personal',        'Current Age',                     'y_age'],
     ['Personal',        'Retirement Age',                  'y_retAge'],
     ['Personal',        'Life Expectancy',                 'y_lifeExp'],
@@ -2082,10 +2360,13 @@ function exportToExcel() {
     ['Income',          'SSN Monthly at 67',               'y_ssn67'],
     ['Income',          'SSN Monthly at 70',               'y_ssn70'],
     ['Income',          'Pension (annual $)',               'y_pension'],
-    ['Accounts',        '401K / IRA ($)',                  'y_401k'],
-    ['Accounts',        'Roth IRA ($)',                    'y_roth'],
-    ['Accounts',        'HSA ($)',                         'y_hsa'],
-    [null, 'DIPTI', null],
+    ['Accounts',        '401K / IRA Balance ($)',          'y_401k'],
+    ['Accounts',        'Roth IRA Balance ($)',            'y_roth'],
+    ['Accounts',        'HSA Balance ($)',                 'y_hsa'],
+    ['Contributions',   '401K / IRA Annual Contrib ($)',   'y_contrib_401k'],
+    ['Contributions',   'Roth IRA Annual Contrib ($)',     'y_contrib_roth'],
+    ['Contributions',   'HSA Annual Contrib ($)',          'y_contrib_hsa'],
+    [null, pName2().toUpperCase(), null],
     ['Personal',        'Current Age',                     'd_age'],
     ['Personal',        'Retirement Age',                  'd_retAge'],
     ['Personal',        'Life Expectancy',                 'd_lifeExp'],
@@ -2096,17 +2377,20 @@ function exportToExcel() {
     ['Income',          'SSN Monthly at 67',               'd_ssn67'],
     ['Income',          'SSN Monthly at 70',               'd_ssn70'],
     ['Income',          'Pension (annual $)',               'd_pension'],
-    ['Accounts',        '401K / IRA ($)',                  'd_401k'],
-    ['Accounts',        'Roth IRA ($)',                    'd_roth'],
-    ['Accounts',        'HSA ($)',                         'd_hsa'],
+    ['Accounts',        '401K / IRA Balance ($)',          'd_401k'],
+    ['Accounts',        'Roth IRA Balance ($)',            'd_roth'],
+    ['Accounts',        'HSA Balance ($)',                 'd_hsa'],
+    ['Contributions',   '401K / IRA Annual Contrib ($)',   'd_contrib_401k'],
+    ['Contributions',   'Roth IRA Annual Contrib ($)',     'd_contrib_roth'],
+    ['Contributions',   'HSA Annual Contrib ($)',          'd_contrib_hsa'],
     [null, 'JOINT / HOUSEHOLD', null],
     ['Location',        'State of Retirement',             'j_state'],
     ['Location',        'Marital Status',                  'j_marital'],
     ['Finances',        'Other Income / Year ($)',         'j_otherIncome'],
     ['Finances',        'Current Household Spend / Year ($)', 'j_currentSpend'],
-    ['Finances',        'Annual Savings / Year ($)',       'j_savings'],
     ['Finances',        'Desired Retirement Spend / Year ($)', 'j_retSpend'],
     ['Finances',        'Joint Taxable / Brokerage ($)',   'j_taxable'],
+    ['Contributions',   'Taxable Acct Annual Contrib ($)', 'j_contrib_taxable'],
     ['Assumptions',     'Base Return Rate (%)',            'j_returnRate'],
     ['Assumptions',     'Inflation Rate (%)',              'j_inflRate'],
     [null, 'TAX DEDUCTIONS', null],
@@ -2118,10 +2402,10 @@ function exportToExcel() {
     ['Deductions',      'Other Itemized ($)',              'j_ded_other'],
     [null, 'ROTH CONVERSIONS', null],
     ['Roth Conv',       'Enable Roth Conversions',         'j_rothEnable'],
-    ['Roth Conv',       'Yashpal Start Age',               'j_rothStartY'],
-    ['Roth Conv',       'Yashpal End Age',                 'j_rothEndY'],
-    ['Roth Conv',       'Dipti Start Age',                 'j_rothStartD'],
-    ['Roth Conv',       'Dipti End Age',                   'j_rothEndD'],
+    ['Roth Conv',       pName1() + ' Start Age',           'j_rothStartY'],
+    ['Roth Conv',       pName1() + ' End Age',             'j_rothEndY'],
+    ['Roth Conv',       pName2() + ' Start Age',           'j_rothStartD'],
+    ['Roth Conv',       pName2() + ' End Age',             'j_rothEndD'],
     ['Roth Conv',       'Annual Conversion Amount ($)',    'j_rothAmt'],
     ['Roth Conv',       'Target Bracket Ceiling',          'j_rothBracket'],
   ];
@@ -2241,15 +2525,17 @@ function exportToExcel() {
 //  Fields list — all sidebar input IDs persisted per plan
 // ══════════════════════════════════════════════════
 const FIELDS = [
-  'p_planName',
+  'p_planName', 'p_name1', 'p_name2', 'j_household',
   'y_age','y_retAge','y_lifeExp','y_salary','y_ssnAge',
   'y_ssn62','y_ssn65','y_ssn67','y_ssn70',
   'y_401k','y_roth','y_hsa','y_pension',
+  'y_contrib_401k','y_contrib_roth','y_contrib_hsa',
   'd_age','d_retAge','d_lifeExp','d_salary','d_ssnAge',
   'd_ssn62','d_ssn65','d_ssn67','d_ssn70',
   'd_401k','d_roth','d_hsa','d_pension',
+  'd_contrib_401k','d_contrib_roth','d_contrib_hsa',
   'j_state','j_marital','j_otherIncome','j_currentSpend',
-  'j_savings','j_retSpend','j_taxable','j_returnRate','j_inflRate',
+  'j_retSpend','j_taxable','j_contrib_taxable','j_returnRate','j_inflRate',
   'j_dedMethod','j_ded_mortgage','j_ded_charity','j_ded_medical','j_ded_salt','j_ded_other',
   'j_rothEnable','j_rothStartY','j_rothEndY','j_rothStartD','j_rothEndD','j_rothAmt','j_rothBracket'
 ];
@@ -2273,24 +2559,43 @@ function applyFields(data) {
   syncAssumptionsBar();
   toggleDeductionFields();
   toggleRothConvFields();
+  // Refresh name-dependent labels without triggering a full calculate()
+  const n1 = (data.p_name1 || 'Person 1').trim();
+  const n2 = (data.p_name2 || 'Person 2').trim();
+  const tabY = el('tab-btn-y'); if (tabY) tabY.textContent = n1;
+  const tabD = el('tab-btn-d'); if (tabD) tabD.textContent = n2;
+  const ly1 = el('lbl-rothStartY'); if (ly1) ly1.textContent = n1 + ' Start Age';
+  const ly2 = el('lbl-rothEndY');   if (ly2) ly2.textContent = n1 + ' End Age';
+  const ld1 = el('lbl-rothStartD'); if (ld1) ld1.textContent = n2 + ' Start Age';
+  const ld2 = el('lbl-rothEndD');   if (ld2) ld2.textContent = n2 + ' End Age';
+  // Apply household type UI
+  applyHouseholdType();
 }
 
-// ── Default values for a blank / new plan ──
+// ── Helper: read person names (with fallback) ──
+const pName1 = () => (el('p_name1') || {}).value?.trim() || 'Person 1';
+const pName2 = () => (el('p_name2') || {}).value?.trim() || 'Person 2';
+
+// ── Blank defaults for NEW users — no pre-filled numbers ──
 const DEFAULTS = {
   p_planName: 'My Retirement Plan',
-  y_age:61, y_retAge:65, y_lifeExp:90, y_salary:325000, y_ssnAge:65,
-  y_ssn62:2688, y_ssn65:3462, y_ssn67:4088, y_ssn70:5192,
-  y_401k:3000000, y_roth:75000, y_hsa:75000, y_pension:0,
-  d_age:60, d_retAge:60, d_lifeExp:90, d_salary:0, d_ssnAge:65,
-  d_ssn62:2423, d_ssn65:2982, d_ssn67:3441, d_ssn70:4267,
-  d_401k:1700000, d_roth:0, d_hsa:25000, d_pension:0,
-  j_state:'CA', j_marital:'M', j_otherIncome:45000,
-  j_currentSpend:200000, j_savings:35000, j_retSpend:225000,
-  j_taxable:8000000, j_returnRate:6, j_inflRate:3,
+  p_name1: 'Person 1', p_name2: 'Person 2',
+  j_household: 'couple',
+  y_age:'', y_retAge:'', y_lifeExp:90, y_salary:0, y_ssnAge:67,
+  y_ssn62:0, y_ssn65:0, y_ssn67:0, y_ssn70:0,
+  y_401k:0, y_roth:0, y_hsa:0, y_pension:0,
+  y_contrib_401k:0, y_contrib_roth:0, y_contrib_hsa:0,
+  d_age:'', d_retAge:'', d_lifeExp:90, d_salary:0, d_ssnAge:67,
+  d_ssn62:0, d_ssn65:0, d_ssn67:0, d_ssn70:0,
+  d_401k:0, d_roth:0, d_hsa:0, d_pension:0,
+  d_contrib_401k:0, d_contrib_roth:0, d_contrib_hsa:0,
+  j_state:'CA', j_marital:'M', j_otherIncome:0,
+  j_currentSpend:0, j_retSpend:0,
+  j_taxable:0, j_contrib_taxable:0, j_returnRate:6, j_inflRate:3,
   j_dedMethod:'standard', j_ded_mortgage:0, j_ded_charity:0,
   j_ded_medical:0, j_ded_salt:10000, j_ded_other:0,
   j_rothEnable:'no', j_rothStartY:62, j_rothEndY:74,
-  j_rothStartD:60, j_rothEndD:74, j_rothAmt:150000, j_rothBracket:0
+  j_rothStartD:60, j_rothEndD:74, j_rothAmt:0, j_rothBracket:0
 };
 
 // ══════════════════════════════════════════════════
@@ -2355,8 +2660,9 @@ async function loadFromStorage() {
         applyFields(plans[0].data);
         return true;
       }
-      // First-time user — start with defaults
+      // First-time user — show onboarding wizard instead of silent defaults
       applyFields(DEFAULTS);
+      showOnboarding();
       return true;
     }
   }
@@ -2819,20 +3125,200 @@ async function settingsChangePassword() {
   el('settingsNewPwd').value = ''; el('settingsConfirmPwd').value = '';
 }
 
-// Delete account
+// Delete account — calls the delete-account Edge Function which uses the admin API
 async function settingsDeleteAccount() {
   if (!_sbClient) return;
   if (!confirm('This will permanently delete your account and ALL saved plans. This cannot be undone. Are you sure?')) return;
-  // Plans are deleted via CASCADE on the DB foreign key.
-  // Supabase requires a server-side call to delete auth users — use the admin API via an Edge Function.
-  // For now, sign the user out and show a support note.
-  await _sbClient.auth.signOut();
-  _setMsg('deleteMsg','Your data has been cleared. To fully remove your auth account contact support.',true);
-  setTimeout(() => {
+
+  const btn = el('settingsModal').querySelector('.settings-btn.danger');
+  if (btn) { btn.disabled = true; btn.textContent = 'Deleting…'; }
+  _setMsg('deleteMsg', 'Deleting your account…', true);
+
+  try {
+    // Get the current session token to pass to the Edge Function
+    const { data: { session } } = await _sbClient.auth.getSession();
+    if (!session) throw new Error('No active session');
+
+    const resp = await fetch(
+      `${SUPABASE_URL}/functions/v1/delete-account`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        }
+      }
+    );
+    const result = await resp.json();
+
+    if (!resp.ok || result.error) {
+      throw new Error(result.error || `HTTP ${resp.status}`);
+    }
+
+    // Success — sign out locally and return to login screen
+    await _sbClient.auth.signOut();
+    _sessionLoaded = false;
+    _currentPlanId = null;
+    _allPlans      = [];
     el('settingsModal').classList.remove('open');
+    el('userMenu').style.display    = 'none';
     el('authOverlay').style.display = '';
     showAuthPanel('login');
-  }, 2500);
+    // Small delay so user sees success before overlay
+    setTimeout(() => alert('Your account and all data have been permanently deleted.'), 200);
+
+  } catch (err) {
+    _setMsg('deleteMsg', `Error: ${err.message}`, false);
+    if (btn) { btn.disabled = false; btn.textContent = 'Delete My Account'; }
+  }
+}
+
+// ══════════════════════════════════════════════════
+//  Household type — single vs couple
+// ══════════════════════════════════════════════════
+function applyHouseholdType() {
+  const isSingle = (el('j_household') || {}).value === 'single';
+  // Show/hide Person 2 tab button
+  const tabD = el('tab-btn-d');
+  if (tabD) tabD.style.display = isSingle ? 'none' : '';
+  // If on Person 2 tab and switching to single, jump to Person 1
+  if (isSingle) {
+    const p2Panel = el('tab-dipti');
+    if (p2Panel && p2Panel.classList.contains('active')) switchTab('yashpal');
+  }
+  // Show/hide Roth conversion Person 2 fields
+  const rD = el('j_rothStartD')?.closest('.inline2');
+  if (rD) rD.style.display = isSingle ? 'none' : '';
+  const rD2 = el('j_rothEndD')?.closest('.inline2');
+  if (rD2) rD2.style.display = isSingle ? 'none' : '';
+  // Marital status: force Single for individual
+  const mar = el('j_marital');
+  if (mar && isSingle) mar.value = 'S';
+}
+
+// ══════════════════════════════════════════════════
+//  Onboarding wizard
+// ══════════════════════════════════════════════════
+let _obStep = 1;
+let _obHouseholdType = 'couple';
+
+function showOnboarding() {
+  _obStep = 1;
+  _obHouseholdType = 'couple';
+  el('ob-step1').style.display = '';
+  el('ob-step2').style.display = 'none';
+  el('ob-step3').style.display = 'none';
+  el('ob-back-btn').style.display = 'none';
+  el('ob-next-btn').textContent = 'Next →';
+  el('onboardOverlay').classList.add('open');
+}
+
+function selectHouseholdType(type) {
+  _obHouseholdType = type;
+  el('ht-couple').classList.toggle('selected', type === 'couple');
+  el('ht-single').classList.toggle('selected', type === 'single');
+  // Show/hide partner name field
+  el('ob-name2-wrap').style.display = type === 'single' ? 'none' : '';
+  // Update titles for single vs couple
+  el('ob-step2-title').textContent =
+    type === 'single' ? 'Step 2 of 3 — Your Details' : 'Step 2 of 3 — Your Details';
+  el('ob-step3-title').textContent =
+    type === 'single' ? 'Step 3 of 3 — Additional Info' : 'Step 3 of 3 — Partner & Additional Info';
+  // Hide/show partner section in step 3
+  el('ob-p2-section').style.display = type === 'single' ? 'none' : '';
+  // Relabel taxable field
+  el('ob-taxable-label').textContent =
+    type === 'single' ? 'Taxable / Brokerage ($)' : 'Joint Taxable / Brokerage ($)';
+}
+
+function obNext() {
+  if (_obStep === 1) {
+    const n1 = el('ob_name1').value.trim();
+    if (!n1) { el('ob_name1').focus(); return; }
+    _obStep = 2;
+    el('ob-step1').style.display = 'none';
+    el('ob-step2').style.display = '';
+    el('ob-back-btn').style.display = '';
+    el('ob-next-btn').textContent = 'Next →';
+    return;
+  }
+  if (_obStep === 2) {
+    // Both single and couple go to step 3 — single shows Additional Info only
+    _obStep = 3;
+    el('ob-step2').style.display = 'none';
+    el('ob-step3').style.display = '';
+    el('ob-next-btn').textContent = 'Create My Plan →';
+    return;
+  }
+  if (_obStep === 3) {
+    obFinish();
+  }
+}
+
+function obBack() {
+  if (_obStep === 2) {
+    _obStep = 1;
+    el('ob-step2').style.display = 'none';
+    el('ob-step1').style.display = '';
+    el('ob-back-btn').style.display = 'none';
+    el('ob-next-btn').textContent = 'Next →';
+  } else if (_obStep === 3) {
+    _obStep = 2;
+    el('ob-step3').style.display = 'none';
+    el('ob-step2').style.display = '';
+    el('ob-next-btn').textContent = 'Next →';
+  }
+}
+
+function obFinish() {
+  const n1  = el('ob_name1').value.trim() || 'Person 1';
+  const n2  = _obHouseholdType === 'couple' ? (el('ob_name2').value.trim() || 'Person 2') : 'Person 2';
+  const ssn67Y = parseFloat(el('ob_y_ssn67').value) || 0;
+  const ssn67D = parseFloat(el('ob_d_ssn67').value) || 0;
+
+  // Build plan data from wizard inputs
+  const data = {
+    ...DEFAULTS,
+    p_planName:   el('ob_planName').value.trim() || 'My Retirement Plan',
+    p_name1:      n1,
+    p_name2:      n2,
+    j_household:  _obHouseholdType,
+    y_age:        el('ob_y_age').value    || '',
+    y_retAge:     el('ob_y_retAge').value || '',
+    y_lifeExp:    el('ob_y_lifeExp').value || 90,
+    y_salary:     el('ob_y_salary').value  || 0,
+    y_401k:       el('ob_y_401k').value    || 0,
+    y_roth:       el('ob_y_roth').value    || 0,
+    y_hsa:        el('ob_y_hsa').value     || 0,
+    // Spread SSN67 across all SSN fields as a starting point
+    y_ssn62: Math.round(ssn67Y * 0.70),
+    y_ssn65: Math.round(ssn67Y * 0.88),
+    y_ssn67: ssn67Y,
+    y_ssn70: Math.round(ssn67Y * 1.24),
+    y_ssnAge: 67,
+    // Person 2 (zeroed for single)
+    d_age:        _obHouseholdType === 'couple' ? (el('ob_d_age').value    || '') : '',
+    d_retAge:     _obHouseholdType === 'couple' ? (el('ob_d_retAge').value  || '') : '',
+    d_lifeExp:    _obHouseholdType === 'couple' ? (el('ob_d_lifeExp').value || 90) : 90,
+    d_401k:       _obHouseholdType === 'couple' ? (el('ob_d_401k').value    || 0)  : 0,
+    d_ssn62: _obHouseholdType === 'couple' ? Math.round(ssn67D * 0.70) : 0,
+    d_ssn65: _obHouseholdType === 'couple' ? Math.round(ssn67D * 0.88) : 0,
+    d_ssn67: ssn67D,
+    d_ssn70: _obHouseholdType === 'couple' ? Math.round(ssn67D * 1.24) : 0,
+    d_ssnAge: 67,
+    j_marital:     _obHouseholdType === 'couple' ? (el('ob_marital')?.value || 'M') : 'S',
+    j_taxable:     el('ob_j_taxable').value     || 0,
+    j_retSpend:    el('ob_j_retSpend').value    || 0,
+    j_state:       el('ob_j_state').value       || 'CA',
+    j_otherIncome: el('ob_j_otherIncome').value || 0,
+  };
+
+  // Apply to the main form
+  applyFields(data);
+  el('onboardOverlay').classList.remove('open');
+  // Save immediately
+  saveToStorage();
+  calculate();
 }
 
 // ══════════════════════════════════════════════════
