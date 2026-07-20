@@ -865,11 +865,19 @@
         <div class="field"><label>SSN at 70 / mo</label><input type="number" id="y_ssn70" value="5192"/></div>
       </div>
 
-      <div class="section-label">Accounts ($)</div>
+      <div class="section-label">Accounts — Balance ($)</div>
       <div class="field"><label>401K / IRA</label><input type="number" id="y_401k" value="3000000"/></div>
       <div class="field"><label>Roth IRA</label><input type="number" id="y_roth" value="75000"/></div>
       <div class="field"><label>HSA</label><input type="number" id="y_hsa" value="75000"/></div>
       <div class="field"><label>Pension (annual $)</label><input type="number" id="y_pension" value="0"/></div>
+
+      <div class="section-label">Annual Contributions ($)</div>
+      <div class="hint" style="margin-bottom:6px;">Each grows with inflation during working years</div>
+      <div class="inline2">
+        <div class="field"><label>401K / IRA</label><input type="number" id="y_contrib_401k" min="0" value="23000"/></div>
+        <div class="field"><label>Roth IRA</label><input type="number" id="y_contrib_roth" min="0" value="7000"/></div>
+      </div>
+      <div class="field"><label>HSA</label><input type="number" id="y_contrib_hsa" min="0" value="4150"/></div>
     </div>
 
     <!-- ── PERSON 2 ── -->
@@ -907,11 +915,19 @@
         <div class="field"><label>SSN at 70 / mo</label><input type="number" id="d_ssn70" value="4267"/></div>
       </div>
 
-      <div class="section-label">Accounts ($)</div>
+      <div class="section-label">Accounts — Balance ($)</div>
       <div class="field"><label>401K / IRA</label><input type="number" id="d_401k" value="1700000"/></div>
       <div class="field"><label>Roth IRA</label><input type="number" id="d_roth" value="0"/></div>
       <div class="field"><label>HSA</label><input type="number" id="d_hsa" value="25000"/></div>
       <div class="field"><label>Pension (annual $)</label><input type="number" id="d_pension" value="0"/></div>
+
+      <div class="section-label">Annual Contributions ($)</div>
+      <div class="hint" style="margin-bottom:6px;">Each grows with inflation during working years</div>
+      <div class="inline2">
+        <div class="field"><label>401K / IRA</label><input type="number" id="d_contrib_401k" min="0" value="23000"/></div>
+        <div class="field"><label>Roth IRA</label><input type="number" id="d_contrib_roth" min="0" value="7000"/></div>
+      </div>
+      <div class="field"><label>HSA</label><input type="number" id="d_contrib_hsa" min="0" value="4150"/></div>
     </div>
 
     <!-- ── JOINT ── -->
@@ -951,13 +967,14 @@
       <div class="section-label">Household Finances</div>
       <div class="field"><label>Other Income / Year (dividends, rent…)</label><input type="number" id="j_otherIncome" value="45000"/></div>
       <div class="field"><label>Current Household Spend / Year ($)</label><input type="number" id="j_currentSpend" value="200000"/></div>
-      <div class="field"><label>Annual Savings / Year ($)</label><input type="number" id="j_savings" value="35000"/>
-        <div class="hint">Added to investments each year until last person retires</div>
-      </div>
       <div class="field"><label>Desired Spend in Retirement / Year ($)</label><input type="number" id="j_retSpend" value="225000"/></div>
 
       <div class="section-label">Joint / Taxable Accounts ($)</div>
-      <div class="field"><label>Taxable / Brokerage (Joint)</label><input type="number" id="j_taxable" value="8000000"/></div>
+      <div class="field"><label>Taxable / Brokerage Balance</label><input type="number" id="j_taxable" value="8000000"/></div>
+      <div class="field"><label>Annual Taxable Contribution ($)</label>
+        <input type="number" id="j_contrib_taxable" min="0" value="10000"/>
+        <div class="hint">Added to taxable/brokerage each year until last person retires. Grows with inflation.</div>
+      </div>
 
       <div class="section-label">Tax Deductions</div>
       <div class="field">
@@ -1356,9 +1373,16 @@ function project(rate, conv = {}, overrides = {}) {
   const dPension= num('d_pension');
 
   // Joint
-  const otherInc  = num('j_otherIncome');
-  const retSpend  = num('j_retSpend');
-  const annSavings= num('j_savings');
+  const otherInc       = num('j_otherIncome');
+  const retSpend       = num('j_retSpend');
+  // Per-account annual contributions (today's dollars; inflated each accumulation year)
+  const yC401k         = num('y_contrib_401k');
+  const yCRoth         = num('y_contrib_roth');
+  const yCHsa          = num('y_contrib_hsa');
+  const dC401k         = num('d_contrib_401k');
+  const dCRoth         = num('d_contrib_roth');
+  const dCHsa          = num('d_contrib_hsa');
+  const jCTaxable      = num('j_contrib_taxable');
   const inflRate       = num('j_inflRate') / 100;
   const stateKey       = sel('j_state');
   const stateTax       = (STATE_TAX[stateKey] || 0) / 100;
@@ -1414,19 +1438,25 @@ function project(rate, conv = {}, overrides = {}) {
     let convAmt = 0, convTax = 0, convBracketRoom = 0;
 
     if (anyWorking) {
-      // Accumulation: grow + add savings
+      // Accumulation: grow accounts then add inflation-adjusted contributions
       const grow = 1 + rate;
       y401k    *= grow; d401k    *= grow;
       yRoth    *= grow; dRoth    *= grow;
       yHSA     *= grow; dHSA     *= grow;
       jTaxable *= grow;
-      // Distribute new savings proportionally
-      y401k    += annSavings * 0.35;
-      d401k    += annSavings * 0.25;
-      yRoth    += annSavings * 0.10;
-      jTaxable += annSavings * 0.20;
-      yHSA     += annSavings * 0.05;
-      dHSA     += annSavings * 0.05;
+      // Contributions grow with inflation — only add while that person is still working
+      if (yWorking) {
+        y401k    += yC401k    * inflFactor;
+        yRoth    += yCRoth    * inflFactor;
+        yHSA     += yCHsa     * inflFactor;
+      }
+      if (dWorking) {
+        d401k    += dC401k    * inflFactor;
+        dRoth    += dCRoth    * inflFactor;
+        dHSA     += dCHsa     * inflFactor;
+      }
+      // Joint taxable contribution while either person is working
+      jTaxable   += jCTaxable  * inflFactor;
 
       // ── Roth conversion ──
       if (conv.enabled) {
@@ -2319,7 +2349,7 @@ function exportToExcel() {
   // Each entry: [ section-or-null, label, field-id ]
   // A null section means it's a section header row, not a data row.
   const INPUT_PARAMS = [
-    [null, 'YASHPAL', null],
+    [null, pName1().toUpperCase(), null],
     ['Personal',        'Current Age',                     'y_age'],
     ['Personal',        'Retirement Age',                  'y_retAge'],
     ['Personal',        'Life Expectancy',                 'y_lifeExp'],
@@ -2330,10 +2360,13 @@ function exportToExcel() {
     ['Income',          'SSN Monthly at 67',               'y_ssn67'],
     ['Income',          'SSN Monthly at 70',               'y_ssn70'],
     ['Income',          'Pension (annual $)',               'y_pension'],
-    ['Accounts',        '401K / IRA ($)',                  'y_401k'],
-    ['Accounts',        'Roth IRA ($)',                    'y_roth'],
-    ['Accounts',        'HSA ($)',                         'y_hsa'],
-    [null, 'DIPTI', null],
+    ['Accounts',        '401K / IRA Balance ($)',          'y_401k'],
+    ['Accounts',        'Roth IRA Balance ($)',            'y_roth'],
+    ['Accounts',        'HSA Balance ($)',                 'y_hsa'],
+    ['Contributions',   '401K / IRA Annual Contrib ($)',   'y_contrib_401k'],
+    ['Contributions',   'Roth IRA Annual Contrib ($)',     'y_contrib_roth'],
+    ['Contributions',   'HSA Annual Contrib ($)',          'y_contrib_hsa'],
+    [null, pName2().toUpperCase(), null],
     ['Personal',        'Current Age',                     'd_age'],
     ['Personal',        'Retirement Age',                  'd_retAge'],
     ['Personal',        'Life Expectancy',                 'd_lifeExp'],
@@ -2344,17 +2377,20 @@ function exportToExcel() {
     ['Income',          'SSN Monthly at 67',               'd_ssn67'],
     ['Income',          'SSN Monthly at 70',               'd_ssn70'],
     ['Income',          'Pension (annual $)',               'd_pension'],
-    ['Accounts',        '401K / IRA ($)',                  'd_401k'],
-    ['Accounts',        'Roth IRA ($)',                    'd_roth'],
-    ['Accounts',        'HSA ($)',                         'd_hsa'],
+    ['Accounts',        '401K / IRA Balance ($)',          'd_401k'],
+    ['Accounts',        'Roth IRA Balance ($)',            'd_roth'],
+    ['Accounts',        'HSA Balance ($)',                 'd_hsa'],
+    ['Contributions',   '401K / IRA Annual Contrib ($)',   'd_contrib_401k'],
+    ['Contributions',   'Roth IRA Annual Contrib ($)',     'd_contrib_roth'],
+    ['Contributions',   'HSA Annual Contrib ($)',          'd_contrib_hsa'],
     [null, 'JOINT / HOUSEHOLD', null],
     ['Location',        'State of Retirement',             'j_state'],
     ['Location',        'Marital Status',                  'j_marital'],
     ['Finances',        'Other Income / Year ($)',         'j_otherIncome'],
     ['Finances',        'Current Household Spend / Year ($)', 'j_currentSpend'],
-    ['Finances',        'Annual Savings / Year ($)',       'j_savings'],
     ['Finances',        'Desired Retirement Spend / Year ($)', 'j_retSpend'],
     ['Finances',        'Joint Taxable / Brokerage ($)',   'j_taxable'],
+    ['Contributions',   'Taxable Acct Annual Contrib ($)', 'j_contrib_taxable'],
     ['Assumptions',     'Base Return Rate (%)',            'j_returnRate'],
     ['Assumptions',     'Inflation Rate (%)',              'j_inflRate'],
     [null, 'TAX DEDUCTIONS', null],
@@ -2493,11 +2529,13 @@ const FIELDS = [
   'y_age','y_retAge','y_lifeExp','y_salary','y_ssnAge',
   'y_ssn62','y_ssn65','y_ssn67','y_ssn70',
   'y_401k','y_roth','y_hsa','y_pension',
+  'y_contrib_401k','y_contrib_roth','y_contrib_hsa',
   'd_age','d_retAge','d_lifeExp','d_salary','d_ssnAge',
   'd_ssn62','d_ssn65','d_ssn67','d_ssn70',
   'd_401k','d_roth','d_hsa','d_pension',
+  'd_contrib_401k','d_contrib_roth','d_contrib_hsa',
   'j_state','j_marital','j_otherIncome','j_currentSpend',
-  'j_savings','j_retSpend','j_taxable','j_returnRate','j_inflRate',
+  'j_retSpend','j_taxable','j_contrib_taxable','j_returnRate','j_inflRate',
   'j_dedMethod','j_ded_mortgage','j_ded_charity','j_ded_medical','j_ded_salt','j_ded_other',
   'j_rothEnable','j_rothStartY','j_rothEndY','j_rothStartD','j_rothEndD','j_rothAmt','j_rothBracket'
 ];
@@ -2546,12 +2584,14 @@ const DEFAULTS = {
   y_age:'', y_retAge:'', y_lifeExp:90, y_salary:0, y_ssnAge:67,
   y_ssn62:0, y_ssn65:0, y_ssn67:0, y_ssn70:0,
   y_401k:0, y_roth:0, y_hsa:0, y_pension:0,
+  y_contrib_401k:0, y_contrib_roth:0, y_contrib_hsa:0,
   d_age:'', d_retAge:'', d_lifeExp:90, d_salary:0, d_ssnAge:67,
   d_ssn62:0, d_ssn65:0, d_ssn67:0, d_ssn70:0,
   d_401k:0, d_roth:0, d_hsa:0, d_pension:0,
+  d_contrib_401k:0, d_contrib_roth:0, d_contrib_hsa:0,
   j_state:'CA', j_marital:'M', j_otherIncome:0,
-  j_currentSpend:0, j_savings:0, j_retSpend:0,
-  j_taxable:0, j_returnRate:6, j_inflRate:3,
+  j_currentSpend:0, j_retSpend:0,
+  j_taxable:0, j_contrib_taxable:0, j_returnRate:6, j_inflRate:3,
   j_dedMethod:'standard', j_ded_mortgage:0, j_ded_charity:0,
   j_ded_medical:0, j_ded_salt:10000, j_ded_other:0,
   j_rothEnable:'no', j_rothStartY:62, j_rothEndY:74,
