@@ -831,7 +831,7 @@
     <div class="person-tabs">
       <div class="ptab active" onclick="switchTab('yashpal')" id="tab-btn-y">Person 1</div>
       <div class="ptab" onclick="switchTab('dipti')" id="tab-btn-d" style="">Person 2</div>
-      <div class="ptab" onclick="switchTab('joint')">Joint</div>
+      <div class="ptab" onclick="switchTab('joint')" id="tab-btn-joint">Joint</div>
     </div>
 
     <!-- ── PERSON 1 ── -->
@@ -3204,6 +3204,9 @@ function applyHouseholdType() {
   if (rD) rD.style.display = isSingle ? 'none' : '';
   const rD2 = el('j_rothEndD')?.closest('.inline2');
   if (rD2) rD2.style.display = isSingle ? 'none' : '';
+  // Rename Joint tab based on household type
+  const tabJoint = el('tab-btn-joint');
+  if (tabJoint) tabJoint.textContent = isSingle ? 'Add. Info' : 'Joint';
   // Marital status: force Single for individual
   const mar = el('j_marital');
   if (mar && isSingle) mar.value = 'S';
