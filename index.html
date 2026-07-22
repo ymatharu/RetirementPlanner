@@ -3258,7 +3258,13 @@ function openConversionChart() {
   if (_chartWin && !_chartWin.closed) { _chartWin.close(); }
 
   const snap = {};
-  FIELDS.forEach(id => { const e = document.getElementById(id); if (e) snap[id] = e.value; });
+  FIELDS.forEach(id => {
+    const e = document.getElementById(id);
+    if (!e) return;
+    // Strip $ and commas so the popup's parseFloat() works on all currency values
+    const isCurrency = CURRENCY_INPUT_IDS.includes(id);
+    snap[id] = isCurrency ? e.value.replace(/[$,]/g, '') : e.value;
+  });
   // Template lives in <textarea id="convChartTpl" style="display:none"> — browser treats
   // its content as raw text so inner <\/script> tags never close the outer document.
   // Read the raw text via .value and inject SNAP JSON at the placeholder.
@@ -4279,7 +4285,7 @@ function loadFromSnap(){
    'y_401k','y_roth','y_hsa','y_pension',
    'd_age','d_retAge','d_lifeExp','d_ssnAge','d_ssn62','d_ssn65','d_ssn67','d_ssn70',
    'd_401k','d_roth','d_hsa','d_pension',
-   'j_taxable','j_savings','j_otherIncome','j_retSpend',
+   'j_taxable','j_contrib_taxable','j_otherIncome','j_retSpend',
    'j_returnRate','j_inflRate','j_state','j_marital','j_dedMethod'
   ].forEach(function(id){
     var e=document.getElementById(id);
