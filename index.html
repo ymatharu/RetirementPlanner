@@ -3,7 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Retirement Planner</title>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <title>Retirement Planner v2</title>
 
   <!-- ── Supabase JS SDK (Phase 1) ── -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
@@ -566,6 +569,23 @@
       <button class="auth-btn" onclick="authForgotPassword()">Send Reset Link</button>
       <span class="auth-link" onclick="showAuthPanel('login')">Back to sign in</span>
     </div>
+
+    <!-- Set new password panel — shown when arriving via reset link -->
+    <div id="authSetPassword" style="display:none;">
+      <h2>Set New Password</h2>
+      <p class="auth-sub">Choose a new password for your account</p>
+      <div class="auth-error"   id="setPasswordError"></div>
+      <div class="auth-success" id="setPasswordSuccess"></div>
+      <div class="auth-field">
+        <label>New Password <span style="color:#8b949e;font-weight:400;">(min 6 characters)</span></label>
+        <input type="password" id="setPasswordNew" placeholder="••••••••" autocomplete="new-password"/>
+      </div>
+      <div class="auth-field">
+        <label>Confirm New Password</label>
+        <input type="password" id="setPasswordConfirm" placeholder="••••••••" autocomplete="new-password"/>
+      </div>
+      <button class="auth-btn" id="setPasswordBtn" onclick="authSetNewPassword()">Set New Password</button>
+    </div>
   </div>
 </div>
 
@@ -845,13 +865,20 @@
         <div class="field"><label>Current Age</label><input type="number" id="y_age" min="18" max="80" value="61"/></div>
         <div class="field"><label>Retirement Age</label><input type="number" id="y_retAge" min="40" max="80" value="65"/></div>
       </div>
-      <div class="field">
-        <label>Life Expectancy (Age)</label>
-        <input type="number" id="y_lifeExp" min="70" max="110" value="90"/>
+      <div class="inline2">
+        <div class="field">
+          <label>Birth Year</label>
+          <input type="number" id="y_birthYear" min="1930" max="2010" value="1963"/>
+          <div class="hint">RMDs start at 73 (born 1951–1959) or 75 (born 1960+)</div>
+        </div>
+        <div class="field">
+          <label>Life Expectancy (Age)</label>
+          <input type="number" id="y_lifeExp" min="70" max="110" value="90"/>
+        </div>
       </div>
 
       <div class="section-label">Income</div>
-      <div class="field"><label>Salary / Year ($)</label><input type="number" id="y_salary" min="0" value="325000"/></div>
+      <div class="field"><label>Salary / Year ($)</label><input type="text" inputmode="numeric" id="y_salary" value="325000"/></div>
       <div class="field"><label>SSN Claim Age</label>
         <select id="y_ssnAge">
           <option value="62">62</option>
@@ -861,27 +888,27 @@
         </select>
       </div>
       <div class="inline2">
-        <div class="field"><label>SSN at 62 / mo</label><input type="number" id="y_ssn62" value="2688"/></div>
-        <div class="field"><label>SSN at 65 / mo</label><input type="number" id="y_ssn65" value="3462"/></div>
+        <div class="field"><label>SSN at 62 / mo</label><input type="text" inputmode="numeric" id="y_ssn62" value="2688"/></div>
+        <div class="field"><label>SSN at 65 / mo</label><input type="text" inputmode="numeric" id="y_ssn65" value="3462"/></div>
       </div>
       <div class="inline2">
-        <div class="field"><label>SSN at 67 / mo</label><input type="number" id="y_ssn67" value="4088"/></div>
-        <div class="field"><label>SSN at 70 / mo</label><input type="number" id="y_ssn70" value="5192"/></div>
+        <div class="field"><label>SSN at 67 / mo</label><input type="text" inputmode="numeric" id="y_ssn67" value="4088"/></div>
+        <div class="field"><label>SSN at 70 / mo</label><input type="text" inputmode="numeric" id="y_ssn70" value="5192"/></div>
       </div>
 
       <div class="section-label">Accounts — Balance ($)</div>
-      <div class="field"><label>401K / IRA</label><input type="number" id="y_401k" value="3000000"/></div>
-      <div class="field"><label>Roth IRA</label><input type="number" id="y_roth" value="75000"/></div>
-      <div class="field"><label>HSA</label><input type="number" id="y_hsa" value="75000"/></div>
-      <div class="field"><label>Pension (annual $)</label><input type="number" id="y_pension" value="0"/></div>
+      <div class="field"><label>401K / IRA</label><input type="text" inputmode="numeric" id="y_401k" value="3000000"/></div>
+      <div class="field"><label>Roth IRA</label><input type="text" inputmode="numeric" id="y_roth" value="75000"/></div>
+      <div class="field"><label>HSA</label><input type="text" inputmode="numeric" id="y_hsa" value="75000"/></div>
+      <div class="field"><label>Pension (annual $)</label><input type="text" inputmode="numeric" id="y_pension" value="0"/></div>
 
       <div class="section-label">Annual Contributions ($)</div>
       <div class="hint" style="margin-bottom:6px;">Each grows with inflation during working years</div>
       <div class="inline2">
-        <div class="field"><label>401K / IRA</label><input type="number" id="y_contrib_401k" min="0" value="23000"/></div>
-        <div class="field"><label>Roth IRA</label><input type="number" id="y_contrib_roth" min="0" value="7000"/></div>
+        <div class="field"><label>401K / IRA</label><input type="text" inputmode="numeric" id="y_contrib_401k" value="23000"/></div>
+        <div class="field"><label>Roth IRA</label><input type="text" inputmode="numeric" id="y_contrib_roth" value="7000"/></div>
       </div>
-      <div class="field"><label>HSA</label><input type="number" id="y_contrib_hsa" min="0" value="4150"/></div>
+      <div class="field"><label>HSA</label><input type="text" inputmode="numeric" id="y_contrib_hsa" value="4150"/></div>
     </div>
 
     <!-- ── PERSON 2 ── -->
@@ -895,13 +922,20 @@
         <div class="field"><label>Current Age</label><input type="number" id="d_age" min="18" max="80" value="60"/></div>
         <div class="field"><label>Retirement Age</label><input type="number" id="d_retAge" min="40" max="80" value="60"/></div>
       </div>
-      <div class="field">
-        <label>Life Expectancy (Age)</label>
-        <input type="number" id="d_lifeExp" min="70" max="110" value="90"/>
+      <div class="inline2">
+        <div class="field">
+          <label>Birth Year</label>
+          <input type="number" id="d_birthYear" min="1930" max="2010" value="1964"/>
+          <div class="hint">RMDs start at 73 (born 1951–1959) or 75 (born 1960+)</div>
+        </div>
+        <div class="field">
+          <label>Life Expectancy (Age)</label>
+          <input type="number" id="d_lifeExp" min="70" max="110" value="90"/>
+        </div>
       </div>
 
       <div class="section-label">Income</div>
-      <div class="field"><label>Salary / Year ($)</label><input type="number" id="d_salary" min="0" value="0"/></div>
+      <div class="field"><label>Salary / Year ($)</label><input type="text" inputmode="numeric" id="d_salary" value="0"/></div>
       <div class="field"><label>SSN Claim Age</label>
         <select id="d_ssnAge">
           <option value="62">62</option>
@@ -911,27 +945,27 @@
         </select>
       </div>
       <div class="inline2">
-        <div class="field"><label>SSN at 62 / mo</label><input type="number" id="d_ssn62" value="2423"/></div>
-        <div class="field"><label>SSN at 65 / mo</label><input type="number" id="d_ssn65" value="2982"/></div>
+        <div class="field"><label>SSN at 62 / mo</label><input type="text" inputmode="numeric" id="d_ssn62" value="2423"/></div>
+        <div class="field"><label>SSN at 65 / mo</label><input type="text" inputmode="numeric" id="d_ssn65" value="2982"/></div>
       </div>
       <div class="inline2">
-        <div class="field"><label>SSN at 67 / mo</label><input type="number" id="d_ssn67" value="3441"/></div>
-        <div class="field"><label>SSN at 70 / mo</label><input type="number" id="d_ssn70" value="4267"/></div>
+        <div class="field"><label>SSN at 67 / mo</label><input type="text" inputmode="numeric" id="d_ssn67" value="3441"/></div>
+        <div class="field"><label>SSN at 70 / mo</label><input type="text" inputmode="numeric" id="d_ssn70" value="4267"/></div>
       </div>
 
       <div class="section-label">Accounts — Balance ($)</div>
-      <div class="field"><label>401K / IRA</label><input type="number" id="d_401k" value="1700000"/></div>
-      <div class="field"><label>Roth IRA</label><input type="number" id="d_roth" value="0"/></div>
-      <div class="field"><label>HSA</label><input type="number" id="d_hsa" value="25000"/></div>
-      <div class="field"><label>Pension (annual $)</label><input type="number" id="d_pension" value="0"/></div>
+      <div class="field"><label>401K / IRA</label><input type="text" inputmode="numeric" id="d_401k" value="1700000"/></div>
+      <div class="field"><label>Roth IRA</label><input type="text" inputmode="numeric" id="d_roth" value="0"/></div>
+      <div class="field"><label>HSA</label><input type="text" inputmode="numeric" id="d_hsa" value="25000"/></div>
+      <div class="field"><label>Pension (annual $)</label><input type="text" inputmode="numeric" id="d_pension" value="0"/></div>
 
       <div class="section-label">Annual Contributions ($)</div>
       <div class="hint" style="margin-bottom:6px;">Each grows with inflation during working years</div>
       <div class="inline2">
-        <div class="field"><label>401K / IRA</label><input type="number" id="d_contrib_401k" min="0" value="23000"/></div>
-        <div class="field"><label>Roth IRA</label><input type="number" id="d_contrib_roth" min="0" value="7000"/></div>
+        <div class="field"><label>401K / IRA</label><input type="text" inputmode="numeric" id="d_contrib_401k" value="23000"/></div>
+        <div class="field"><label>Roth IRA</label><input type="text" inputmode="numeric" id="d_contrib_roth" value="7000"/></div>
       </div>
-      <div class="field"><label>HSA</label><input type="number" id="d_contrib_hsa" min="0" value="4150"/></div>
+      <div class="field"><label>HSA</label><input type="text" inputmode="numeric" id="d_contrib_hsa" value="4150"/></div>
     </div>
 
     <!-- ── JOINT ── -->
@@ -969,16 +1003,46 @@
       </div>
 
       <div class="section-label">Household Finances</div>
-      <div class="field"><label>Other Income / Year (dividends, rent…)</label><input type="number" id="j_otherIncome" value="45000"/></div>
-      <div class="field"><label>Current Household Spend / Year ($)</label><input type="number" id="j_currentSpend" value="200000"/></div>
-      <div class="field"><label>Desired Spend in Retirement / Year ($)</label><input type="number" id="j_retSpend" value="225000"/></div>
+      <div class="field"><label>Other Income / Year (dividends, rent…)</label><input type="text" inputmode="numeric" id="j_otherIncome" value="45000"/></div>
+      <div class="field"><label>Current Household Spend / Year ($)</label><input type="text" inputmode="numeric" id="j_currentSpend" value="200000"/></div>
+      <div class="field"><label>Desired Spend in Retirement / Year ($)</label><input type="text" inputmode="numeric" id="j_retSpend" value="225000"/></div>
 
       <div class="section-label">Joint / Taxable Accounts ($)</div>
-      <div class="field"><label>Taxable / Brokerage Balance</label><input type="number" id="j_taxable" value="8000000"/></div>
+      <div class="field"><label>Taxable / Brokerage Balance</label><input type="text" inputmode="numeric" id="j_taxable" value="8000000"/></div>
       <div class="field"><label>Annual Taxable Contribution ($)</label>
-        <input type="number" id="j_contrib_taxable" min="0" value="10000"/>
+        <input type="text" inputmode="numeric" id="j_contrib_taxable" value="10000"/>
         <div class="hint">Added to taxable/brokerage each year until last person retires. Grows with inflation.</div>
       </div>
+      <div class="field">
+        <label>Capital Gains Tax Rate (%)</label>
+        <input type="number" id="j_capGainsRate" min="0" max="40" step="0.1" value="15"/>
+        <div class="hint">Your expected long-term capital gains rate on taxable account withdrawals (typically 0%, 15%, or 20%). Cash withdrawals are never taxed.</div>
+      </div>
+
+      <div class="section-label">Cash / Savings</div>
+      <div class="field">
+        <label>Cash in Hand / Savings ($)</label>
+        <input type="text" inputmode="numeric" id="j_cash" value="0"/>
+        <div class="hint">Savings accounts, CDs, money-market, or physical cash.</div>
+      </div>
+      <div class="field">
+        <label>Cash Interest Rate (%)</label>
+        <input type="number" id="j_cashRate" min="0" max="20" step="0.1" value="4.5"/>
+        <div class="hint">Annual yield on the cash/savings balance (e.g. HYSA or CD rate).</div>
+      </div>
+
+      <div class="section-label">Dependents</div>
+      <div class="hint" style="margin-bottom:6px;">
+        Enter each dependent's current age. Dependents are assumed to age out at 18.
+        Each qualifying child under 17 generates a $2,000 Child Tax Credit (phases out above $400K AGI for MFJ / $200K Single).
+      </div>
+      <div id="dependentRows"></div>
+      <button type="button" onclick="addDependent()"
+        style="margin-top:4px;padding:5px 12px;font-size:12px;background:#f7f8fa;border:1px solid #d0d7de;border-radius:5px;cursor:pointer;color:#1e3a5f;font-weight:600;">
+        + Add Dependent
+      </button>
+      <!-- hidden field stores JSON array of ages -->
+      <input type="hidden" id="j_dependents" value="[]"/>
 
       <div class="section-label">Tax Deductions</div>
       <div class="field">
@@ -993,24 +1057,24 @@
       <div id="itemizedFields" style="display:none;">
         <div class="field">
           <label>Mortgage Interest ($)</label>
-          <input type="number" id="j_ded_mortgage" min="0" value="0" oninput="updateItemizedTotal(); calculate();"/>
+          <input type="text" inputmode="numeric" id="j_ded_mortgage" value="0" oninput="updateItemizedTotal(); calculate();"/>
         </div>
         <div class="field">
           <label>Charitable Contributions ($)</label>
-          <input type="number" id="j_ded_charity" min="0" value="0" oninput="updateItemizedTotal(); calculate();"/>
+          <input type="text" inputmode="numeric" id="j_ded_charity" value="0" oninput="updateItemizedTotal(); calculate();"/>
         </div>
         <div class="field">
           <label>Medical Expenses above 7.5% AGI ($)</label>
-          <input type="number" id="j_ded_medical" min="0" value="0" oninput="updateItemizedTotal(); calculate();"/>
+          <input type="text" inputmode="numeric" id="j_ded_medical" value="0" oninput="updateItemizedTotal(); calculate();"/>
         </div>
         <div class="field">
           <label>State &amp; Local Taxes — SALT ($, max $10K)</label>
-          <input type="number" id="j_ded_salt" min="0" max="10000" value="10000" oninput="updateItemizedTotal(); calculate();"/>
+          <input type="text" inputmode="numeric" id="j_ded_salt" value="10000" oninput="updateItemizedTotal(); calculate();"/>
           <div class="hint">IRS caps SALT deduction at $10,000.</div>
         </div>
         <div class="field">
           <label>Other Itemized Deductions ($)</label>
-          <input type="number" id="j_ded_other" min="0" value="0" oninput="updateItemizedTotal(); calculate();"/>
+          <input type="text" inputmode="numeric" id="j_ded_other" value="0" oninput="updateItemizedTotal(); calculate();"/>
         </div>
         <div style="background:#f7f8fa;border:1px solid #e5e7eb;border-radius:5px;padding:8px 10px;margin-top:6px;font-size:12px;">
           <span style="color:#57606a;">Total Itemized:</span>
@@ -1038,7 +1102,7 @@
         </div>
         <div class="field">
           <label>Annual Conversion Amount ($)</label>
-          <input type="number" id="j_rothAmt" min="0" value="150000" oninput="calculate()"/>
+          <input type="text" inputmode="numeric" id="j_rothAmt" value="150000" oninput="calculate()"/>
           <div class="hint">Amount moved from 401K/IRA → Roth each year. Tax is paid from the joint taxable account.</div>
         </div>
         <div class="field">
@@ -1057,6 +1121,11 @@
       <div class="inline2">
         <div class="field"><label>Base Return (%)</label><input type="number" id="j_returnRate" min="0" max="20" step="0.1" value="6"/></div>
         <div class="field"><label>Inflation (%)</label><input type="number" id="j_inflRate" min="0" max="10" step="0.1" value="3"/></div>
+      </div>
+      <div class="field">
+        <label>SSN COLA / Year (%)</label>
+        <input type="number" id="j_ssnCola" min="0" max="10" step="0.1" value="2.5"/>
+        <div class="hint">Annual Social Security cost-of-living adjustment. SSN inputs are today's dollars — COLA grows them to claim age and beyond.</div>
       </div>
     </div>
 
@@ -1128,6 +1197,16 @@
       <div id="rothContent"></div>
     </div>
 
+    <div class="section" id="rmdSection">
+      <h3 style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;" onclick="toggleRmdSection()">
+        <span>Required Minimum Distributions (RMD)</span>
+        <span id="rmdChevron" style="font-size:13px;color:#57606a;font-weight:400;">▼ expand</span>
+      </h3>
+      <div id="rmdBody" style="display:none;">
+        <div id="rmdContent"></div>
+      </div>
+    </div>
+
     <div class="section" id="optimizerSection">
       <h3 style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;" onclick="toggleOptimizer()">
         <span>⚙ Portfolio Optimizer</span>
@@ -1172,16 +1251,132 @@
 // ══════════════════════════════════════════════════
 //  Helpers
 // ══════════════════════════════════════════════════
-const fmt  = n => '$' + Math.round(n).toLocaleString();
+const fmt  = n => (n < 0 ? '-$' : '$') + Math.abs(Math.round(n)).toLocaleString();
 const fmtK = n => {
   if (Math.abs(n) >= 1e6) return '$' + (n/1e6).toFixed(2) + 'M';
   if (Math.abs(n) >= 1e3) return '$' + (n/1e3).toFixed(0) + 'K';
   return fmt(n);
 };
 const pct  = n => n.toFixed(1) + '%';
-const num  = id => parseFloat(document.getElementById(id).value) || 0;
+// Strip $ and commas before parsing so currency-formatted inputs work correctly
+const num = id => {
+  const raw = (document.getElementById(id).value || '').replace(/[$,]/g, '');
+  const n = parseFloat(raw);
+  return isNaN(n) ? 0 : n;
+};
+
+// Format a raw number (or numeric string) as "$1,234" for sidebar display
+function fmtInput(v) {
+  const raw = String(v == null ? '' : v).replace(/[$,]/g, '').trim();
+  if (raw === '') return '';
+  const n = parseFloat(raw);
+  if (isNaN(n)) return '';
+  return '$' + Math.round(n).toLocaleString();
+}
+
+// IDs of sidebar inputs that represent currency amounts
+const CURRENCY_INPUT_IDS = [
+  'y_salary',
+  'y_ssn62','y_ssn65','y_ssn67','y_ssn70',
+  'y_401k','y_roth','y_hsa','y_pension',
+  'y_contrib_401k','y_contrib_roth','y_contrib_hsa',
+  'd_salary',
+  'd_ssn62','d_ssn65','d_ssn67','d_ssn70',
+  'd_401k','d_roth','d_hsa','d_pension',
+  'd_contrib_401k','d_contrib_roth','d_contrib_hsa',
+  'j_otherIncome','j_currentSpend','j_retSpend',
+  'j_taxable','j_contrib_taxable',
+  'j_cash',
+  'j_rothAmt',
+  'j_ded_mortgage','j_ded_charity','j_ded_medical','j_ded_salt','j_ded_other',
+];
+
+// Format all currency inputs (call after any value change)
+function formatCurrencyFields() {
+  CURRENCY_INPUT_IDS.forEach(id => {
+    const inp = document.getElementById(id);
+    if (!inp) return;
+    const formatted = fmtInput(inp.value);
+    if (formatted !== '') inp.value = formatted;
+  });
+}
+
+function initCurrencyInputs() {
+  CURRENCY_INPUT_IDS.forEach(id => {
+    const inp = document.getElementById(id);
+    if (!inp) return;
+    // Format on blur
+    inp.addEventListener('blur', () => {
+      const formatted = fmtInput(inp.value);
+      if (formatted !== '') inp.value = formatted;
+    });
+    // Strip formatting on focus so user can type freely
+    inp.addEventListener('focus', () => {
+      inp.value = inp.value.replace(/[$,]/g, '');
+    });
+  });
+  // Format all current values immediately
+  formatCurrencyFields();
+}
 const sel  = id => document.getElementById(id).value;
 const el   = id => document.getElementById(id);
+
+// ══════════════════════════════════════════════════
+//  Dependents UI
+// ══════════════════════════════════════════════════
+function getDependents() {
+  try { return JSON.parse(el('j_dependents').value || '[]'); } catch(e) { return []; }
+}
+function saveDependents(arr) {
+  el('j_dependents').value = JSON.stringify(arr);
+}
+
+function renderDependentRows() {
+  const container = el('dependentRows');
+  if (!container) return;
+  const deps = getDependents();
+  if (deps.length === 0) {
+    container.innerHTML = '<div style="font-size:12px;color:#8b949e;margin-bottom:4px;">No dependents added.</div>';
+    return;
+  }
+  container.innerHTML = deps.map((d, i) => `
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+      <label style="font-size:12px;color:#57606a;flex-shrink:0;min-width:90px;">Dependent ${i+1} Age</label>
+      <input type="number" min="0" max="17" value="${d.age}"
+        style="width:64px;padding:4px 6px;border:1px solid #d0d7de;border-radius:4px;font-size:13px;"
+        oninput="updateDependentAge(${i}, this.value)"/>
+      <span style="font-size:11px;color:#8b949e;">current age</span>
+      <button type="button" onclick="removeDependent(${i})"
+        style="margin-left:auto;padding:2px 8px;font-size:11px;background:#fff0f0;border:1px solid #f8b4b4;border-radius:4px;cursor:pointer;color:#cf222e;">
+        ✕
+      </button>
+    </div>`).join('');
+}
+
+function addDependent() {
+  const deps = getDependents();
+  if (deps.length >= 8) return; // max 8 dependents
+  deps.push({ age: 0 });
+  saveDependents(deps);
+  renderDependentRows();
+  calculate();
+}
+
+function removeDependent(i) {
+  const deps = getDependents();
+  deps.splice(i, 1);
+  saveDependents(deps);
+  renderDependentRows();
+  calculate();
+}
+
+function updateDependentAge(i, val) {
+  const deps = getDependents();
+  if (!deps[i]) return;
+  deps[i].age = parseInt(val) || 0;
+  saveDependents(deps);
+  calculate();
+}
 
 const STATE_TAX = {
   CA:10.5, FL:0, TX:0, NY:6.85, WA:0, NV:0, AZ:2.5, OR:9.9, CO:4.4, OTHER:5
@@ -1259,7 +1454,32 @@ function progressiveTax(income, brackets) {
  *   stateTaxRate     - decimal (e.g. 0.093 for CA)
  *   inflFactor       - for adjusting bracket thresholds nominally (approx)
  */
-function calcTax({ ordinaryIncome, capitalGainsGross, married, stateTaxRate, deductionAmt }) {
+// Child Tax Credit constants (2024)
+const CTC_PER_CHILD           = 2000;   // credit per qualifying child under 17
+const CTC_PHASEOUT_MFJ        = 400000; // AGI phaseout start (MFJ)
+const CTC_PHASEOUT_SINGLE     = 200000; // AGI phaseout start (Single / HoH)
+const CTC_PHASEOUT_INCREMENT  = 50;     // credit reduced $50 per $1,000 over threshold
+const QUALIFYING_CHILD_MAX_AGE = 17;    // child must be under 17 at year-end for CTC
+
+/**
+ * Compute Child Tax Credit for this year.
+ * @param {number[]} depAges  - current ages of all dependents
+ * @param {number}   magi     - Modified AGI (ordinaryIncome + capitalGainsGross)
+ * @param {boolean}  married
+ * @returns {number} credit amount (never negative)
+ */
+function calcCTC(depAges, magi, married) {
+  if (!depAges || depAges.length === 0) return 0;
+  const qualifyingKids = depAges.filter(a => a < QUALIFYING_CHILD_MAX_AGE).length;
+  if (qualifyingKids === 0) return 0;
+  const grossCredit = qualifyingKids * CTC_PER_CHILD;
+  const threshold   = married ? CTC_PHASEOUT_MFJ : CTC_PHASEOUT_SINGLE;
+  const excess      = Math.max(0, magi - threshold);
+  const reduction   = Math.ceil(excess / 1000) * CTC_PHASEOUT_INCREMENT;
+  return Math.max(0, grossCredit - reduction);
+}
+
+function calcTax({ ordinaryIncome, capitalGainsGross, married, stateTaxRate, deductionAmt, depAges }) {
   const brackets  = married ? FED_BRACKETS_MFJ   : FED_BRACKETS_S;
   const ltcgBrk   = married ? LTCG_BRACKETS_MFJ  : LTCG_BRACKETS_S;
   const stdDed    = married ? STD_DED_MFJ         : STD_DED_SINGLE;
@@ -1283,13 +1503,17 @@ function calcTax({ ordinaryIncome, capitalGainsGross, married, stateTaxRate, ded
   const niitBase  = Math.max(0, Math.min(capitalGainsGross, magi - niitThres));
   const niitTax   = niitBase * NIIT_RATE;
 
+  // Child Tax Credit — reduces federal tax owed (non-refundable; can't go below zero)
+  const ctcCredit = calcCTC(depAges || [], magi, married);
+  const fedBeforeCTC = fedOrdTax + fedCgTax + niitTax;
+  const totalFed  = Math.max(0, fedBeforeCTC - ctcCredit);
+
   // State tax on all income (flat rate — state deduction omitted for simplicity)
   const stateTax  = (ordinaryIncome + capitalGainsGross) * stateTaxRate;
 
-  const totalFed  = fedOrdTax + fedCgTax + niitTax;
   const totalTax  = totalFed + stateTax;
 
-  return { fedOrdTax, fedCgTax, niitTax, stateTax, totalTax,
+  return { fedOrdTax, fedCgTax, niitTax, ctcCredit, stateTax, totalTax,
            taxableOrd, magi, stdDed };
 }
 
@@ -1338,20 +1562,38 @@ function switchTab(name) {
 }
 
 // ══════════════════════════════════════════════════
-//  IRS Uniform Lifetime Table — RMD divisors by age
-//  Source: IRS Publication 590-B (2023)
+//  IRS Uniform Lifetime Table — full life expectancy factors
+//  Source: IRS Publication 590-B, Table III (2022 final regs)
+//  SECURE 2.0 Act: RMD start age depends on birth year:
+//    Born before 1951         → started at 70½ (legacy, not modelled)
+//    Born 1951–1959           → start at age 73
+//    Born 1960 or later       → start at age 75
 // ══════════════════════════════════════════════════
-// SECURE 2.0: individuals born in 1951–1959 start RMDs at 73;
-// born 1960 or later (Yashpal b.1965, Dipti b.1965) start at 75.
 const RMD_TABLE = {
+  72:27.4, 73:26.5, 74:25.5,
   75:24.6, 76:23.7, 77:22.9, 78:22.0, 79:21.1,
-  80:20.2, 81:19.4, 82:18.5, 83:17.7, 84:16.8, 85:16.0, 86:15.2, 87:14.4,
-  88:13.7, 89:12.9, 90:12.2, 91:11.5, 92:10.8, 93:10.1, 94:9.5,  95:8.9,
-  96:8.4,  97:7.8,  98:7.3,  99:6.8,  100:6.4
+  80:20.2, 81:19.4, 82:18.5, 83:17.7, 84:16.8,
+  85:16.0, 86:15.2, 87:14.4, 88:13.7, 89:12.9,
+  90:12.2, 91:11.5, 92:10.8, 93:10.1, 94:9.5,
+  95:8.9,  96:8.4,  97:7.8,  98:7.3,  99:6.8,
+  100:6.4, 101:6.0, 102:5.6, 103:5.2, 104:4.9,
+  105:4.6, 106:4.3, 107:4.1, 108:3.9, 109:3.7,
+  110:3.5, 111:3.4, 112:3.3, 113:3.1, 114:3.0,
+  115:2.9, 116:2.8, 117:2.7, 118:2.5, 119:2.3, 120:2.0
 };
-function rmdDivisor(age) {
-  if (age < 75) return Infinity; // no RMD required yet (born 1960+)
-  return RMD_TABLE[age] || RMD_TABLE[100];
+
+// Return the RMD start age based on birth year (SECURE 2.0)
+function rmdStartAge(birthYear) {
+  if (!birthYear || birthYear < 1951) return 73; // legacy — treat as 73
+  if (birthYear <= 1959) return 73;
+  return 75; // born 1960 or later
+}
+
+// Return life expectancy factor for a given age; Infinity = no RMD yet
+function rmdDivisor(age, birthYear) {
+  const startAge = rmdStartAge(birthYear || 1960);
+  if (age < startAge) return Infinity;
+  return RMD_TABLE[age] || RMD_TABLE[120];
 }
 
 // ══════════════════════════════════════════════════
@@ -1387,10 +1629,16 @@ function project(rate, conv = {}, overrides = {}) {
   const dCRoth         = num('d_contrib_roth');
   const dCHsa          = num('d_contrib_hsa');
   const jCTaxable      = num('j_contrib_taxable');
+  const yBirthYear     = num('y_birthYear') || (new Date().getFullYear() - num('y_age'));
+  const dBirthYear     = num('d_birthYear') || (new Date().getFullYear() - num('d_age'));
   const inflRate       = num('j_inflRate') / 100;
+  const ssnCola        = num('j_ssnCola')  / 100;
   const stateKey       = sel('j_state');
   const stateTax       = (STATE_TAX[stateKey] || 0) / 100;
   const married        = sel('j_marital') === 'M';
+  // Dependents — parse from JSON; compute per-year ages in the loop below
+  const _depsRaw = (() => { try { return JSON.parse(el('j_dependents').value || '[]'); } catch(e) { return []; } })();
+  const depCurrentAges = _depsRaw.map(d => Number(d.age) || 0); // array of today's ages
   // Deduction method: standard or itemized (whichever is larger wins, per IRS rules — IRS always uses the higher value)
   const stdDed         = married ? STD_DED_MFJ : STD_DED_SINGLE;
   const dedMethod      = sel('j_dedMethod');
@@ -1410,13 +1658,15 @@ function project(rate, conv = {}, overrides = {}) {
   const totalTaxRate = APPROX_MARGINAL + stateTax;
 
   // Accounts — track separately
-  let y401k   = num('y_401k');
-  let yRoth   = num('y_roth');
-  let yHSA    = num('y_hsa');
-  let d401k   = num('d_401k');
-  let dRoth   = num('d_roth');
-  let dHSA    = num('d_hsa');
-  let jTaxable= num('j_taxable');
+  let y401k    = num('y_401k');
+  let yRoth    = num('y_roth');
+  let yHSA     = num('y_hsa');
+  let d401k    = num('d_401k');
+  let dRoth    = num('d_roth');
+  let dHSA     = num('d_hsa');
+  let jTaxable = num('j_taxable');
+  let jCash    = num('j_cash');
+  const cashRate = num('j_cashRate') / 100;
 
   // For single filers d_age/d_retAge/d_lifeExp are blank/zero — ignore them
   const _single   = (el('j_household') || {}).value === 'single';
@@ -1438,6 +1688,9 @@ function project(rate, conv = {}, overrides = {}) {
     const spendReal  = retSpend * inflFactor;
     const otherReal  = otherInc * inflFactor;
 
+    // Dependent ages this projection year — dependents age out at 18 (no longer qualify)
+    const depAges = depCurrentAges.map(a => a + yr).filter(a => a < 18);
+
     let rowDraws = {};
     let convAmt = 0, convTax = 0, convBracketRoom = 0;
 
@@ -1448,6 +1701,7 @@ function project(rate, conv = {}, overrides = {}) {
       yRoth    *= grow; dRoth    *= grow;
       yHSA     *= grow; dHSA     *= grow;
       jTaxable *= grow;
+      jCash    *= (1 + cashRate);   // cash grows at its own interest rate
       // Contributions grow with inflation — only add while that person is still working
       if (yWorking) {
         y401k    += yC401k    * inflFactor;
@@ -1467,8 +1721,8 @@ function project(rate, conv = {}, overrides = {}) {
         const yInWindow = curYashpalAge >= conv.startY && curYashpalAge <= conv.endY;
         const dInWindow = curDiptiAge   >= conv.startD && curDiptiAge   <= conv.endD;
         if (yInWindow || dInWindow) {
-          // Estimate ordinary income this year (no SSN in accumulation, just other income)
-          const estOrdIncome = otherInc * inflFactor; // dividends counted as cap gains, not ord.
+          // Estimate ordinary income this year — other income (dividends, rent) taxed as ordinary
+          const estOrdIncome = otherInc * inflFactor;
 
           // Bracket ceiling: when set, the conversion fills exactly to the ceiling (not capped by
           // the manual amount — the manual amount is only used when no ceiling is chosen).
@@ -1495,10 +1749,10 @@ function project(rate, conv = {}, overrides = {}) {
 
           // Tax on conversion: ordinary income rate, paid from taxable account
           const convOrdIncome  = estOrdIncome + convAmt;
-          const convTaxResult  = calcTax({ ordinaryIncome: convOrdIncome, capitalGainsGross: otherInc * inflFactor,
-                                           married, stateTaxRate: stateTax, deductionAmt });
-          const baseTaxResult  = calcTax({ ordinaryIncome: estOrdIncome, capitalGainsGross: otherInc * inflFactor,
-                                           married, stateTaxRate: stateTax, deductionAmt });
+          const convTaxResult  = calcTax({ ordinaryIncome: convOrdIncome, capitalGainsGross: 0,
+                                           married, stateTaxRate: stateTax, deductionAmt, depAges });
+          const baseTaxResult  = calcTax({ ordinaryIncome: estOrdIncome, capitalGainsGross: 0,
+                                           married, stateTaxRate: stateTax, deductionAmt, depAges });
           convTax     = convTaxResult.totalTax - baseTaxResult.totalTax;
           jTaxable   -= convTax; // pay tax from taxable account
           jTaxable    = Math.max(0, jTaxable); // never go negative
@@ -1506,8 +1760,12 @@ function project(rate, conv = {}, overrides = {}) {
       }
     } else {
       // Distribution phase
-      const ySsnAnnual = curYashpalAge >= ySsnAge ? (ySsn[ySsnAge] || 0) * 12 * inflFactor : 0;
-      const dSsnAnnual = curDiptiAge   >= dSsnAge ? (dSsn[dSsnAge] || 0) * 12 * inflFactor : 0;
+      // SSN grows by COLA from today (current age) to whenever it is first claimed,
+      // then continues growing by COLA each year after that.
+      const yYearsOfCola = curYashpalAge >= ySsnAge ? curYashpalAge - yAge : 0;
+      const dYearsOfCola = curDiptiAge   >= dSsnAge ? curDiptiAge   - dAge : 0;
+      const ySsnAnnual = curYashpalAge >= ySsnAge ? (ySsn[ySsnAge] || 0) * 12 * Math.pow(1 + ssnCola, yYearsOfCola) : 0;
+      const dSsnAnnual = curDiptiAge   >= dSsnAge ? (dSsn[dSsnAge] || 0) * 12 * Math.pow(1 + ssnCola, dYearsOfCola) : 0;
       const pensions   = (yPension + dPension) * inflFactor;
       const totalFixed = ySsnAnnual + dSsnAnnual + pensions + otherReal;
 
@@ -1516,10 +1774,10 @@ function project(rate, conv = {}, overrides = {}) {
 
       // ── Step 1: compute RMDs (forced minimums from pre-tax 401k/IRA) ──
       // RMD is a gross pre-tax amount; we must withdraw at least this much from each 401k/IRA.
-      const yRmdMin = y401k / rmdDivisor(curYashpalAge);
-      const dRmdMin = d401k / rmdDivisor(curDiptiAge);
+      const yRmdMin = y401k / rmdDivisor(curYashpalAge, yBirthYear);
+      const dRmdMin = d401k / rmdDivisor(curDiptiAge,   dBirthYear);
 
-      const CAP_GAINS_RATE = 0.15;
+      const CAP_GAINS_RATE = num('j_capGainsRate') / 100;
 
       // ── Step 2a: RMDs come FIRST — they are mandatory regardless of spending need ──
       // Draw exactly the RMD minimum from each 401k/IRA.
@@ -1587,11 +1845,13 @@ function project(rate, conv = {}, overrides = {}) {
         jTaxable -= drawJActual; needed -= drawJActual * (1 - CAP_GAINS_RATE);
       }
 
-      // Roth & HSA — tax-free, draw last
+      // Roth & HSA — tax-free, draw last before cash
       const drawYR = Math.min(yRoth, Math.max(0, needed)); yRoth -= drawYR; needed -= drawYR;
       const drawDR = Math.min(dRoth, Math.max(0, needed)); dRoth -= drawDR; needed -= drawDR;
       const drawYH = Math.min(yHSA,  Math.max(0, needed)); yHSA  -= drawYH; needed -= drawYH;
-      const drawDH = Math.min(dHSA,  Math.max(0, needed)); dHSA  -= drawDH;
+      const drawDH = Math.min(dHSA,  Math.max(0, needed)); dHSA  -= drawDH; needed -= drawDH;
+      // Cash — drawn very last (preserve it as long as possible; interest income is ordinary)
+      const drawCash = Math.min(jCash, Math.max(0, needed)); jCash -= drawCash;
 
       // Combine RMD + voluntary 401k draws for reporting
       const drawY401 = drawY401rmd + drawY401vol;
@@ -1604,39 +1864,41 @@ function project(rate, conv = {}, overrides = {}) {
       const dRmdForced = 0;
 
       const totalWithdrawn = drawJActual + drawY401 + drawD401 + drawYR + drawDR + drawYH + drawDH
-                           + yRmdForced + dRmdForced;
+                           + yRmdForced + dRmdForced + drawCash;
 
       // ── Tax computation — 2024 progressive brackets + NIIT ──
-      // Ordinary income: 401k/IRA draws + taxable portion of SSN (85%) + pensions
+      // Ordinary income: 401k/IRA draws + taxable portion of SSN (85%) + pensions + other income
+      // Other income (dividends, rent, etc.) is taxed as ordinary W-2 income per user request
       const total401kGross = drawY401 + drawD401 + yRmdForced + dRmdForced;
       const ssnTaxablePct  = 0.85; // IRS: up to 85% taxable for high earners
       const ordinaryIncome = total401kGross
                            + (ySsnAnnual + dSsnAnnual) * ssnTaxablePct
-                           + pensions;
+                           + pensions
+                           + otherReal;   // ← dividends/other income taxed as ordinary income
 
-      // Capital gains income: taxable account draws + qualified dividends
-      const capitalGainsGross = drawJActual + otherReal;
+      // Capital gains income: taxable account draws only (other income moved to ordinary)
+      const capitalGainsGross = drawJActual;
 
-      const taxResult = calcTax({ ordinaryIncome, capitalGainsGross, married, stateTaxRate: stateTax, deductionAmt });
+      const taxResult = calcTax({ ordinaryIncome, capitalGainsGross, married, stateTaxRate: stateTax, deductionAmt, depAges });
 
       // Break out for table display
+      const totalOrdAndCg = Math.max(ordinaryIncome + capitalGainsGross, 1);
       const taxOn401k    = taxResult.fedOrdTax * (total401kGross / Math.max(ordinaryIncome, 1))
-                         + taxResult.stateTax  * (total401kGross / Math.max(ordinaryIncome + capitalGainsGross, 1));
+                         + taxResult.stateTax  * (total401kGross / totalOrdAndCg);
       const taxOnSsn     = taxResult.fedOrdTax * ((ySsnAnnual + dSsnAnnual) * ssnTaxablePct / Math.max(ordinaryIncome, 1))
-                         + taxResult.stateTax  * ((ySsnAnnual + dSsnAnnual) * ssnTaxablePct / Math.max(ordinaryIncome + capitalGainsGross, 1));
+                         + taxResult.stateTax  * ((ySsnAnnual + dSsnAnnual) * ssnTaxablePct / totalOrdAndCg);
       const taxOnTaxable = (taxResult.fedCgTax + taxResult.niitTax)
-                         * (drawJActual / Math.max(capitalGainsGross, 1))
-                         + taxResult.stateTax * (drawJActual / Math.max(ordinaryIncome + capitalGainsGross, 1));
-      const taxOnOther   = (taxResult.fedCgTax + taxResult.niitTax)
-                         * (otherReal / Math.max(capitalGainsGross, 1))
-                         + taxResult.stateTax * (otherReal / Math.max(ordinaryIncome + capitalGainsGross, 1));
+                         + taxResult.stateTax * (drawJActual / totalOrdAndCg);
+      const taxOnOther   = taxResult.fedOrdTax * (otherReal / Math.max(ordinaryIncome, 1))
+                         + taxResult.stateTax  * (otherReal / totalOrdAndCg);
 
       const fedTax           = taxResult.fedOrdTax + taxResult.fedCgTax + taxResult.niitTax;
       const stateTaxAmt      = taxResult.stateTax;
       const totalTaxPaid     = taxResult.totalTax;
-      const totalGrossIncome = drawJActual + total401kGross + (drawYR + drawDR + drawYH + drawDH)
-                             + (ySsnAnnual + dSsnAnnual) + pensions + otherReal;
-      const effectiveTaxRate = totalGrossIncome > 0 ? totalTaxPaid / totalGrossIncome : 0;
+      // Effective rate denominator = only taxable income sources (Roth, HSA, Cash are tax-free)
+      const taxableGrossIncome = drawJActual + total401kGross
+                               + (ySsnAnnual + dSsnAnnual) + pensions + otherReal;
+      const effectiveTaxRate = taxableGrossIncome > 0 ? totalTaxPaid / taxableGrossIncome : 0;
 
       // ── Step 4: Roth conversion in distribution phase (pre-RMD years only, age < 75) ──
       // If conversions are enabled and either person is still under 75 and within their
@@ -1647,9 +1909,11 @@ function project(rate, conv = {}, overrides = {}) {
         const dConvDist = curDiptiAge   >= conv.startD && curDiptiAge   <= Math.min(conv.endD, 74);
         if (yConvDist || dConvDist) {
           // Real ordinary income already generated this year (before conversion)
+          // otherReal is now ordinary income (taxed as W-2), so include it here
           const totalOrdIncomePreConv = total401kGross
                                       + (ySsnAnnual + dSsnAnnual) * 0.85
-                                      + pensions;
+                                      + pensions
+                                      + otherReal;
 
           let distMaxConv;
           if (conv.bracketCeiling > 0) {
@@ -1674,9 +1938,9 @@ function project(rate, conv = {}, overrides = {}) {
 
             // Incremental tax from conversion added on top of this year's income
             const convOrdIncome  = totalOrdIncomePreConv + convAmt;
-            const cgGross        = drawJActual + otherReal;
-            const convTaxResult  = calcTax({ ordinaryIncome: convOrdIncome, capitalGainsGross: cgGross, married, stateTaxRate: stateTax, deductionAmt });
-            const baseTaxResult2 = calcTax({ ordinaryIncome: totalOrdIncomePreConv, capitalGainsGross: cgGross, married, stateTaxRate: stateTax, deductionAmt });
+            const cgGross        = drawJActual; // otherReal already in ordinaryIncome
+            const convTaxResult  = calcTax({ ordinaryIncome: convOrdIncome, capitalGainsGross: cgGross, married, stateTaxRate: stateTax, deductionAmt, depAges });
+            const baseTaxResult2 = calcTax({ ordinaryIncome: totalOrdIncomePreConv, capitalGainsGross: cgGross, married, stateTaxRate: stateTax, deductionAmt, depAges });
             convTax              = convTaxResult.totalTax - baseTaxResult2.totalTax;
             jTaxable            -= convTax;
           }
@@ -1697,13 +1961,16 @@ function project(rate, conv = {}, overrides = {}) {
       yRoth    *= (1 + rate); dRoth    *= (1 + rate);
       yHSA     *= (1 + rate); dHSA     *= (1 + rate);
       jTaxable *= (1 + rate);
+      jCash    *= (1 + cashRate);   // cash grows at its own interest rate even in distribution
 
       rowDraws = { drawJ: drawJActual, drawY401, drawD401, drawYR, drawDR, drawYH, drawDH,
+                   drawCash,
                    yRmdForced, dRmdForced, yRmdMin, dRmdMin,
                    totalWithdrawn, spendReal,
                    ySsnAnnual, dSsnAnnual, pensions, otherReal,
                    taxOnTaxable, taxOn401k, taxOnSsn, taxOnOther,
                    fedTax, stateTaxAmt,
+                   ctcCredit: taxResult.ctcCredit,
                    totalTaxPaid, effectiveTaxRate };
       // Note: convAmt / convTax are set on the outer let variables and pushed separately on row.
     }
@@ -1716,14 +1983,16 @@ function project(rate, conv = {}, overrides = {}) {
     yHSA     = Math.max(0, yHSA);
     dHSA     = Math.max(0, dHSA);
     jTaxable = Math.max(0, jTaxable);
-    const total = y401k + yRoth + yHSA + d401k + dRoth + dHSA + jTaxable;
+    jCash    = Math.max(0, jCash);
+    const total = y401k + yRoth + yHSA + d401k + dRoth + dHSA + jTaxable + jCash;
     rows.push({
       yr, curYashpalAge, curDiptiAge,
       y401k, yRoth, yHSA,
       d401k, dRoth, dHSA,
-      jTaxable, total,
+      jTaxable, jCash, total,
       phase: anyWorking ? 'Accumulation' : 'Distribution',
       convAmt, convTax, convBracketRoom: conv.bracketCeiling > 0 ? convBracketRoom : null,
+      activeDepCount: depAges.length,
       ...rowDraws
     });
   }
@@ -1771,22 +2040,35 @@ function calculate() {
   const cRet = rowAtLastRet(pCons);
   const oRet = rowAtLastRet(pOpt);
 
-  const ySsnAge = parseInt(sel('y_ssnAge'));
-  const dSsnAge = parseInt(sel('d_ssnAge'));
+  const ySsnAge  = parseInt(sel('y_ssnAge'));
+  const dSsnAge  = parseInt(sel('d_ssnAge'));
+  const ssnCola  = num('j_ssnCola') / 100;
+  const yAge     = num('y_age');
+  const dAge     = num('d_age');
+
+  // Today's-dollar monthly amounts at each claim age
   const ySsnMo  = { 62:num('y_ssn62'), 65:num('y_ssn65'), 67:num('y_ssn67'), 70:num('y_ssn70') };
   const dSsnMo  = { 62:num('d_ssn62'), 65:num('d_ssn65'), 67:num('d_ssn67'), 70:num('d_ssn70') };
-  const ySsnAnnual = (ySsnMo[ySsnAge] || 0) * 12;
-  const dSsnAnnual = (dSsnMo[dSsnAge] || 0) * 12;
-  const totalSsnAnnual = ySsnAnnual + dSsnAnnual;
+
+  // COLA-adjusted monthly amounts at the chosen claim age
+  // (today's amount grown by COLA for the years until claim)
+  const yColaYrs  = Math.max(0, ySsnAge - yAge);
+  const dColaYrs  = Math.max(0, dSsnAge - dAge);
+  const yColaFact = Math.pow(1 + ssnCola, yColaYrs);
+  const dColaFact = Math.pow(1 + ssnCola, dColaYrs);
+  const ySsnAdjMo  = (ySsnMo[ySsnAge] || 0) * yColaFact;
+  const dSsnAdjMo  = (dSsnMo[dSsnAge] || 0) * dColaFact;
+  const totalSsnAnnual = (ySsnAdjMo + dSsnAdjMo) * 12;
 
   renderSummaryCards(bRet, pBase, totalSsnAnnual);
   renderScenarios(cRet, bRet, oRet, cons, base, opt, pCons, pBase, pOpt);
   renderChart(pBase, pCons, pOpt);
   renderBreakdown(bRet);
-  renderSSN(ySsnMo, dSsnMo, ySsnAge, dSsnAge);
+  renderSSN(ySsnMo, dSsnMo, ySsnAge, dSsnAge, ssnCola, yAge, dAge);
   renderWithdrawal(bRet, totalSsnAnnual);
   renderYearTable(pBase);
   renderRothConversion(pBase, pNoConv);
+  renderRMD(pBase);
 
   saveToStorage();
   el('lastSaved').textContent = 'Updated ' + new Date().toLocaleTimeString();
@@ -1798,10 +2080,128 @@ function calculate() {
   const sr = el('sidebarResult');
   const sv = el('sidebarResultValue');
   const ss = el('sidebarResultSub');
-  sv.textContent = fmtK(finalVal);
+  sv.textContent = fmt(finalVal);
   sv.style.color = finalVal > 0 ? '#1a7f37' : '#cf222e';
   ss.textContent = `at ${pName1()} age ${finalAge}  •  ${finalVal > 0 ? 'surplus' : 'shortfall'}`;
   sr.style.display = '';
+}
+
+// ══════════════════════════════════════════════════
+//  RMD Section toggle
+// ══════════════════════════════════════════════════
+function toggleRmdSection() {
+  const body    = el('rmdBody');
+  const chevron = el('rmdChevron');
+  const open    = body.style.display === 'none';
+  body.style.display  = open ? '' : 'none';
+  chevron.textContent = open ? '▲ collapse' : '▼ expand';
+}
+
+// ══════════════════════════════════════════════════
+//  RMD — Required Minimum Distribution table
+// ══════════════════════════════════════════════════
+function renderRMD(proj) {
+  const content = el('rmdContent');
+  if (!content) return;
+
+  const yBY  = num('y_birthYear') || (new Date().getFullYear() - num('y_age'));
+  const dBY  = num('d_birthYear') || (new Date().getFullYear() - num('d_age'));
+  const single = isSingle();
+
+  const yStartAge = rmdStartAge(yBY);
+  const dStartAge = rmdStartAge(dBY);
+
+  // Build per-person RMD schedule from the projection rows
+  // Only distribution-phase rows; only rows where RMD is required (yRmdMin > 0)
+  const distRows = proj.filter(r => r.phase === 'Distribution');
+
+  const personTable = (startAge, birthYear, nameKey, bal401kKey, rmdMinKey, ageKey) => {
+    const name = nameKey === 'y' ? pName1() : pName2();
+    const cohort = birthYear >= 1960 ? 'Born 1960+ → RMDs start at 75'
+                 : birthYear >= 1951 ? 'Born 1951–1959 → RMDs start at 73'
+                 : 'Born before 1951 → RMDs started at 70½';
+
+    // Build rows for every age from startAge through max projected age
+    const ages = [];
+    for (let age = startAge; age <= 120; age++) {
+      if (!RMD_TABLE[age]) break;
+      const factor = RMD_TABLE[age];
+      const projRow = proj.find(r => r[ageKey] === age);
+      const bal     = projRow ? projRow[bal401kKey] : null;
+      const rmdAmt  = bal != null ? bal / factor : null;
+      ages.push({ age, factor, bal, rmdAmt });
+    }
+
+    // Only show rows where we have projection data or within reasonable range
+    const visibleAges = ages.filter(r => r.bal != null);
+    if (visibleAges.length === 0) {
+      return `<div style="margin-bottom:24px;">
+        <h4 style="font-size:13px;font-weight:700;color:#1e3a5f;margin-bottom:4px;">${name}</h4>
+        <p style="font-size:12px;color:#8b949e;">No RMD data — person does not reach age ${startAge} in projection.</p>
+      </div>`;
+    }
+
+    const rows = visibleAges.map(r => {
+      const isFirstYear = r.age === startAge;
+      return `<tr style="${isFirstYear ? 'background:#fffbeb;font-weight:600;' : ''}">
+        <td>${r.age}${isFirstYear ? ' <span style="font-size:10px;background:#f59e0b;color:#fff;padding:1px 6px;border-radius:8px;margin-left:4px;">Starts</span>' : ''}</td>
+        <td style="text-align:center;">${r.factor.toFixed(1)}</td>
+        <td>${fmt(r.bal)}</td>
+        <td style="font-weight:600;color:#7e1d6b;">${fmt(r.rmdAmt)}</td>
+        <td style="color:#57606a;font-size:11px;">${(r.rmdAmt / r.bal * 100).toFixed(2)}%</td>
+      </tr>`;
+    }).join('');
+
+    return `<div style="margin-bottom:24px;">
+      <h4 style="font-size:13px;font-weight:700;color:#1e3a5f;margin-bottom:2px;">${name}</h4>
+      <p style="font-size:11px;color:#57606a;margin-bottom:8px;">${cohort} &nbsp;|&nbsp; Birth year: ${birthYear}</p>
+      <div style="max-height:320px;overflow-y:auto;border:1px solid #e5e7eb;border-radius:6px;">
+        <table>
+          <thead>
+            <tr>
+              <th>Age</th>
+              <th style="text-align:center;">Life Expectancy<br>Factor</th>
+              <th>Dec 31 Balance<br><span style="font-weight:400;text-transform:none;">(prior yr 401K/IRA)</span></th>
+              <th style="color:#7e1d6b;">RMD Amount<br><span style="font-weight:400;text-transform:none;">(balance ÷ factor)</span></th>
+              <th>% of Balance</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>`;
+  };
+
+  // Full IRS Uniform Lifetime Table reference panel
+  const irsTableRows = Object.entries(RMD_TABLE).map(([age, factor]) =>
+    `<tr>
+      <td style="text-align:center;">${age}</td>
+      <td style="text-align:center;">${factor}</td>
+    </tr>`
+  ).join('');
+
+  content.innerHTML = `
+    <p style="font-size:12px;color:#57606a;margin-bottom:16px;line-height:1.7;">
+      RMD = <strong>Prior Dec 31 account balance ÷ life expectancy factor</strong> from IRS Uniform Lifetime Table III.
+      Under the SECURE 2.0 Act, RMDs begin at <strong>age 73</strong> (born 1951–1959) or <strong>age 75</strong> (born 1960 or later).
+      Amounts shown use projected 401K/IRA balances from the base scenario.
+    </p>
+    <div style="display:grid;grid-template-columns:${single ? '1fr' : '1fr 1fr'};gap:20px;margin-bottom:24px;">
+      ${personTable(yStartAge, yBY, 'y', 'y401k', 'yRmdMin', 'curYashpalAge')}
+      ${single ? '' : personTable(dStartAge, dBY, 'd', 'd401k', 'dRmdMin', 'curDiptiAge')}
+    </div>
+    <details style="border:1px solid #e5e7eb;border-radius:6px;padding:10px 14px;">
+      <summary style="font-size:12px;font-weight:700;color:#1e3a5f;cursor:pointer;">
+        IRS Uniform Lifetime Table III — Full Reference (ages ${Math.min(...Object.keys(RMD_TABLE).map(Number))}–${Math.max(...Object.keys(RMD_TABLE).map(Number))})
+      </summary>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:0;margin-top:10px;border:1px solid #e5e7eb;border-radius:4px;overflow:hidden;">
+        <table style="min-width:unset;">
+          <thead><tr><th style="text-align:center;">Age</th><th style="text-align:center;">Factor</th></tr></thead>
+          <tbody>${irsTableRows}</tbody>
+        </table>
+      </div>
+    </details>
+  `;
 }
 
 // ══════════════════════════════════════════════════
@@ -1841,7 +2241,7 @@ function renderSummaryCards(atRet, proj, totalSsnAnnual) {
     <div class="card">
       <div class="clabel">Combined SSN / mo</div>
       <div class="cvalue">${fmtK(totalSsnAnnual / 12)}</div>
-      <div class="csub">Both at chosen claim ages</div>
+      <div class="csub">COLA-adj. at claim ages</div>
     </div>
     <div class="card ${endRow.total > 0 ? 'good' : 'bad'}">
       <div class="clabel">Combined Estate</div>
@@ -1890,12 +2290,13 @@ function renderChart(pBase, pCons, pOpt) {
   const W=720,H=300,PL=72,PR=20,PT=20,PB=50;
   const cW=W-PL-PR, cH=H-PT-PB;
   const allTot = [...pBase,...pCons,...pOpt].map(r=>r.total);
-  const maxVal = Math.max(...allTot)*1.05;
+  const maxVal = Math.max(1, Math.max(...allTot)*1.05);
   const minVal = Math.min(0,...allTot);
-  const maxYr  = pBase.length - 1;
+  const maxYr  = Math.max(1, pBase.length - 1);
+  const valRange = maxVal - minVal || 1;  // guard against division by zero
 
   const xS = yr => PL + (yr / maxYr) * cW;
-  const yS = v  => PT + cH - ((v - minVal) / (maxVal - minVal)) * cH;
+  const yS = v  => PT + cH - ((v - minVal) / valRange) * cH;
 
   const line = (proj, color) => {
     const pts = proj.map(r => `${xS(r.yr).toFixed(1)},${yS(r.total).toFixed(1)}`).join(' ');
@@ -1952,8 +2353,40 @@ function renderChart(pBase, pCons, pOpt) {
 function renderBreakdown(atRet) {
   const yTotal = atRet.y401k + atRet.yRoth + atRet.yHSA;
   const dTotal = atRet.d401k + atRet.dRoth + atRet.dHSA;
-  const grand  = yTotal + dTotal + atRet.jTaxable;
+  const grand  = yTotal + dTotal + atRet.jTaxable + (atRet.jCash || 0);
   const single = isSingle();
+
+  // Dependent / CTC info at the retirement snapshot year
+  const deps    = getDependents();
+  const yAge    = num('y_age');
+  const yRetAge = num('y_retAge');
+  const yrsToRet = Math.max(0, yRetAge - yAge);
+  // How many dependents are still qualifying children at retirement (age < 17)
+  const depsAtRet = deps.filter(d => (Number(d.age) + yrsToRet) < 17).length;
+  const ctcAtRet  = atRet.ctcCredit != null ? atRet.ctcCredit : null;
+  // Build dep pills without nested backticks (avoids JS syntax error)
+  const depPills = deps.map(function(d, i) {
+    const ageAtRet = Number(d.age) + yrsToRet;
+    const qualifies = ageAtRet < 17;
+    const bg     = qualifies ? '#dcfce7' : '#f3f4f6';
+    const color  = qualifies ? '#166534' : '#6b7280';
+    const border = qualifies ? '#86efac' : '#d1d5db';
+    const label  = 'Dep ' + (i+1) + ': age ' + d.age + ' now \u2192 ' + ageAtRet + ' at ret' + (qualifies ? ' \u2713 CTC' : '');
+    return '<span style="padding:2px 8px;border-radius:10px;font-size:11px;background:' + bg + ';color:' + color + ';border:1px solid ' + border + ';">' + label + '</span>';
+  }).join('');
+  const ctcLine = ctcAtRet != null && ctcAtRet > 0
+    ? ' &middot; Child Tax Credit applied: <strong style="color:#166534;">' + fmt(ctcAtRet) + '/yr</strong>'
+    : (depsAtRet === 0 ? ' &middot; No CTC (all dependents aged out)' : '');
+  const depBanner = deps.length === 0 ? '' :
+    '<div style="margin-top:12px;padding:10px 14px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;font-size:12px;line-height:1.7;">' +
+      '<strong style="color:#166534;">Dependents at Retirement</strong><br>' +
+      '<span style="color:#374151;">' +
+        deps.length + ' dependent' + (deps.length !== 1 ? 's' : '') + ' entered &middot; ' +
+        '<strong>' + depsAtRet + '</strong> still qualifying child' + (depsAtRet !== 1 ? 'ren' : '') + ' (age &lt; 17) at ' + pName1() + "'s retirement age " + yRetAge +
+        ctcLine +
+      '</span>' +
+      (depPills ? '<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:6px;">' + depPills + '</div>' : '') +
+    '</div>';
 
   el('breakdown').innerHTML = `
     <div class="person-accts" style="${single ? 'grid-template-columns:1fr;' : ''}">
@@ -1977,37 +2410,58 @@ function renderBreakdown(atRet) {
     <div style="margin-top:12px;padding-top:12px;border-top:1px solid #e5e7eb;">
       <div class="acct-grid">
         <div class="acct"><div class="aname">Joint Taxable</div><div class="abal">${fmtK(atRet.jTaxable)}</div><div class="anote">Capital gains rate</div></div>
+        <div class="acct"><div class="aname">Cash / Savings</div><div class="abal">${fmtK(atRet.jCash||0)}</div><div class="anote">${num('j_cashRate')}% interest</div></div>
         <div class="acct" style="border:1px solid #1e3a5f;"><div class="aname">Total Combined</div><div class="abal" style="color:#1e3a5f;">${fmtK(grand)}</div><div class="anote">All accounts</div></div>
       </div>
-    </div>`;
+    </div>
+    ${depBanner}`;
 }
 
 // ══════════════════════════════════════════════════
 //  SSN Comparison — side by side
 // ══════════════════════════════════════════════════
-function renderSSN(ySsn, dSsn, yChosen, dChosen) {
-  const ages = [62, 65, 67, 70];
+function renderSSN(ySsn, dSsn, yChosen, dChosen, ssnCola, yCurrentAge, dCurrentAge) {
+  const ages  = [62, 65, 67, 70];
   const lifeY = num('y_lifeExp');
   const lifeD = num('d_lifeExp');
+  const cola  = ssnCola || 0;
 
-  const tbl = (ssn, chosen, life, name, cls) => `
+  // Build table for one person
+  // adjMo = today's monthly * (1+cola)^(claimAge - currentAge) = amount at first check
+  const tbl = (ssn, chosen, life, name, cls, curAge) => `
     <div>
       <table>
-        <thead><tr><th colspan="3">${name} SSN <span class="tag ${cls}">${cls === 'y' ? pName1() : pName2()}</span></th></tr>
-          <tr><th>Claim Age</th><th>Monthly</th><th>Lifetime to ${life}</th></tr></thead>
+        <thead>
+          <tr><th colspan="4">${name} SSN <span class="tag ${cls}">${cls === 'y' ? pName1() : pName2()}</span>
+            <span style="font-weight:400;font-size:10px;color:#8b949e;margin-left:6px;">COLA ${(cola*100).toFixed(1)}%/yr</span>
+          </th></tr>
+          <tr>
+            <th>Claim Age</th>
+            <th>Today's $</th>
+            <th>At Claim Age <span style="font-weight:400;font-size:10px;">(COLA adj.)</span></th>
+            <th>Lifetime to ${life}</th>
+          </tr>
+        </thead>
         <tbody>
-          ${ages.map(a => `<tr class="${a===chosen?'hl':''}">
-            <td>${a}${a===chosen?' <span class="tag '+(cls==='y'?'y':'d')+'">Plan</span>':''}</td>
-            <td>${fmt(ssn[a]||0)}</td>
-            <td>${fmtK((ssn[a]||0)*12*(life-a))}</td>
-          </tr>`).join('')}
+          ${ages.map(a => {
+            const todayMo = ssn[a] || 0;
+            const colaYrs = Math.max(0, a - curAge);
+            const adjMo   = todayMo * Math.pow(1 + cola, colaYrs);
+            const lifetime = adjMo * 12 * (life - a);
+            return `<tr class="${a===chosen?'hl':''}">
+              <td>${a}${a===chosen?' <span class="tag '+(cls==='y'?'y':'d')+'">Plan</span>':''}</td>
+              <td style="color:#8b949e;">${fmt(todayMo)}</td>
+              <td style="font-weight:${a===chosen?'700':'400'};color:${a===chosen?'#1e3a5f':'inherit'};">${fmt(adjMo)}</td>
+              <td>${fmtK(lifetime)}</td>
+            </tr>`;
+          }).join('')}
         </tbody>
       </table>
     </div>`;
 
   el('ssnGrid').innerHTML =
-    tbl(ySsn, yChosen, lifeY, pName1(), 'y') +
-    tbl(dSsn, dChosen, lifeD, pName2(), 'd');
+    tbl(ySsn, yChosen, lifeY, pName1(), 'y', yCurrentAge) +
+    tbl(dSsn, dChosen, lifeD, pName2(), 'd', dCurrentAge);
 }
 
 // ══════════════════════════════════════════════════
@@ -2027,7 +2481,7 @@ function renderWithdrawal(atRet, totalSsnAnnual) {
   el('withdrawalGrid').innerHTML = `
     <div class="wcard"><div class="wl">Portfolio 4% / mo</div><div class="wv">${fmtK(monthly4)}</div><div class="ws">Sustainable withdrawal</div></div>
     <div class="wcard"><div class="wl">Portfolio 3% Safe / mo</div><div class="wv">${fmtK(monthly3)}</div><div class="ws">Conservative withdrawal</div></div>
-    <div class="wcard"><div class="wl">Combined SSN / mo</div><div class="wv">${fmtK(ssnMo)}</div><div class="ws">Both spouses at claim ages</div></div>
+    <div class="wcard"><div class="wl">Combined SSN / mo</div><div class="wv">${fmtK(ssnMo)}</div><div class="ws">COLA-adjusted at claim ages</div></div>
     <div class="wcard"><div class="wl">Total Income (4%+SSN) / mo</div><div class="wv">${fmtK(monthly4+ssnMo)}</div><div class="ws">Combined monthly</div></div>
     <div class="wcard"><div class="wl">Desired Spend / mo</div><div class="wv">${fmtK(spendMo)}</div><div class="ws">Today's dollars</div></div>
     <div class="wcard"><div class="wl">${gap>=0?'Monthly Surplus':'Monthly Gap'}</div>
@@ -2147,7 +2601,7 @@ function renderYearTable(proj) {
       <th rowspan="2">Target Spend<br><span style="font-weight:400;text-transform:none;">(infl. adj.)</span></th>
       <th rowspan="2">SSN + Other<br><span style="font-weight:400;text-transform:none;">(income)</span></th>
       <th colspan="2" style="text-align:center;background:#f5f0ff;color:#5b21b6;">← Roth Conv →</th>
-      <th colspan="${single ? 4 : 7}" style="text-align:center;background:#fff7ed;color:#92400e;">← Voluntary Withdrawals →</th>
+      <th colspan="${single ? 5 : 8}" style="text-align:center;background:#fff7ed;color:#92400e;">← Voluntary Withdrawals →</th>
       <th colspan="${single ? 1 : 2}" style="text-align:center;background:#fdf2f8;color:#7e1d6b;">RMD Forced</th>
       <th rowspan="2">Total<br>Withdrawn</th>
       <th colspan="4" style="text-align:center;background:#fef9c3;color:#713f12;">← Tax by Source →</th>
@@ -2155,7 +2609,7 @@ function renderYearTable(proj) {
       <th rowspan="2" style="background:#fef0c3;color:#713f12;">State Tax<br>(CA 10.5%)</th>
       <th rowspan="2" style="background:#fde68a;color:#713f12;border-left:2px solid #d97706;">Total Tax<br>Paid</th>
       <th rowspan="2">Eff. Tax<br>Rate</th>
-      <th colspan="7" style="text-align:center;background:#f0f9ff;color:#075985;">← Ending Balances →</th>
+      <th colspan="8" style="text-align:center;background:#f0f9ff;color:#075985;">← Ending Balances →</th>
       <th rowspan="2">Total<br>Portfolio</th>
     </tr>
     <tr>
@@ -2168,6 +2622,7 @@ function renderYearTable(proj) {
       ${single ? '' : `<th style="background:#fff7ed;">${n2} Roth</th>`}
       <th style="background:#fff7ed;">${n1} HSA</th>
       ${single ? '' : `<th style="background:#fff7ed;">${n2} HSA</th>`}
+      <th style="background:#fff7ed;">Cash</th>
       <th style="background:#fdf2f8;">${n1} RMD</th>
       ${single ? '' : `<th style="background:#fdf2f8;">${n2} RMD</th>`}
       <th style="background:#fef9c3;">Cap Gains<br>(Taxable)</th>
@@ -2181,6 +2636,7 @@ function renderYearTable(proj) {
       ${single ? '' : `<th style="background:#f0f9ff;">${n2} Roth</th>`}
       <th style="background:#f0f9ff;">${n1} HSA</th>
       ${single ? '' : `<th style="background:#f0f9ff;">${n2} HSA</th>`}
+      <th style="background:#f0f9ff;">Cash</th>
     </tr>
   </thead>`;
 
@@ -2228,6 +2684,7 @@ function renderYearTable(proj) {
       ${single ? '' : (isDistrib ? drawCell(r.drawDR)   : dash)}
       ${isDistrib ? drawCell(r.drawYH)   : dash}
       ${single ? '' : (isDistrib ? drawCell(r.drawDH)   : dash)}
+      ${isDistrib ? drawCell(r.drawCash||0) : dash}
       ${isDistrib ? rmdCell(r.yRmdForced||0, r.yRmdMin||0) : dash}
       ${single ? '' : (isDistrib ? rmdCell(r.dRmdForced||0, r.dRmdMin||0) : dash)}
       <td><strong>${isDistrib ? fmtK(r.totalWithdrawn) : '—'}</strong></td>
@@ -2249,6 +2706,7 @@ function renderYearTable(proj) {
       ${single ? '' : `<td style="background:#f0f9ff;">${fmtK(r.dRoth)}</td>`}
       <td style="background:#f0f9ff;">${fmtK(r.yHSA)}</td>
       ${single ? '' : `<td style="background:#f0f9ff;">${fmtK(r.dHSA)}</td>`}
+      <td style="background:#f0f9ff;">${fmtK(r.jCash||0)}</td>
       <td style="background:#f0f9ff;"><strong>${fmtK(r.total)}</strong></td>
     </tr>`;
   }).join('');
@@ -2282,6 +2740,7 @@ function renderYearTable(proj) {
     ${single ? '' : `<td style="${ts}color:#b35000;">${fmtK(sum('drawDR'))}</td>`}
     <td style="${ts}color:#b35000;">${fmtK(sum('drawYH'))}</td>
     ${single ? '' : `<td style="${ts}color:#b35000;">${fmtK(sum('drawDH'))}</td>`}
+    <td style="${ts}color:#b35000;">${fmtK(sum('drawCash'))}</td>
     <td style="${ts}color:#7e1d6b;">${fmtK(sum('yRmdForced'))}</td>
     ${single ? '' : `<td style="${ts}color:#7e1d6b;">${fmtK(sum('dRmdForced'))}</td>`}
     <td style="${ts}">${fmtK(totalWithdrawnAll)}</td>
@@ -2300,6 +2759,7 @@ function renderYearTable(proj) {
     ${single ? '' : `<td style="${ts}background:#e8f0fb;">${fmtK(last.dRoth)}</td>`}
     <td style="${ts}background:#e8f0fb;">${fmtK(last.yHSA)}</td>
     ${single ? '' : `<td style="${ts}background:#e8f0fb;">${fmtK(last.dHSA)}</td>`}
+    <td style="${ts}background:#e8f0fb;">${fmtK(last.jCash||0)}</td>
     <td style="${ts}background:#e8f0fb;">${fmtK(last.total)}</td>
   </tr>`;
 
@@ -2349,6 +2809,7 @@ function exportToExcel() {
     { h: 'Total Tax Paid',             v: r => r.phase === 'Distribution' ? n(r.totalTaxPaid||0) : '' },
     { h: 'Effective Tax Rate (%)',     v: r => r.phase === 'Distribution' ? +((r.effectiveTaxRate||0)*100).toFixed(2) : '' },
     // ending balances
+    { h: 'Draw - Cash',         v: r => r.phase === 'Distribution' ? n(r.drawCash||0) : '' },
     { h: 'Bal - Joint Taxable', v: r => n(r.jTaxable) },
     { h: 'Bal - Y 401K/IRA',    v: r => n(r.y401k)    },
     { h: 'Bal - D 401K/IRA',    v: r => n(r.d401k)    },
@@ -2356,6 +2817,7 @@ function exportToExcel() {
     { h: 'Bal - D Roth',        v: r => n(r.dRoth)     },
     { h: 'Bal - Y HSA',         v: r => n(r.yHSA)      },
     { h: 'Bal - D HSA',         v: r => n(r.dHSA)      },
+    { h: 'Bal - Cash',          v: r => n(r.jCash||0)  },
     { h: 'Total Portfolio',     v: r => n(r.total)      },
   ];
 
@@ -2421,8 +2883,12 @@ function exportToExcel() {
     ['Finances',        'Desired Retirement Spend / Year ($)', 'j_retSpend'],
     ['Finances',        'Joint Taxable / Brokerage ($)',   'j_taxable'],
     ['Contributions',   'Taxable Acct Annual Contrib ($)', 'j_contrib_taxable'],
+    ['Cash / Savings',  'Cash in Hand / Savings ($)',      'j_cash'],
+    ['Cash / Savings',  'Cash Interest Rate (%)',          'j_cashRate'],
     ['Assumptions',     'Base Return Rate (%)',            'j_returnRate'],
     ['Assumptions',     'Inflation Rate (%)',              'j_inflRate'],
+    [null, 'DEPENDENTS', null],
+    ['Dependents',  'Dependents (JSON ages)',           'j_dependents'],
     [null, 'TAX DEDUCTIONS', null],
     ['Deductions',      'Deduction Method',                'j_dedMethod'],
     ['Deductions',      'Mortgage Interest ($)',           'j_ded_mortgage'],
@@ -2556,26 +3022,32 @@ function exportToExcel() {
 // ══════════════════════════════════════════════════
 const FIELDS = [
   'p_planName', 'p_name1', 'p_name2', 'j_household',
-  'y_age','y_retAge','y_lifeExp','y_salary','y_ssnAge',
+  'y_age','y_retAge','y_birthYear','y_lifeExp','y_salary','y_ssnAge',
   'y_ssn62','y_ssn65','y_ssn67','y_ssn70',
   'y_401k','y_roth','y_hsa','y_pension',
   'y_contrib_401k','y_contrib_roth','y_contrib_hsa',
-  'd_age','d_retAge','d_lifeExp','d_salary','d_ssnAge',
+  'd_age','d_retAge','d_birthYear','d_lifeExp','d_salary','d_ssnAge',
   'd_ssn62','d_ssn65','d_ssn67','d_ssn70',
   'd_401k','d_roth','d_hsa','d_pension',
   'd_contrib_401k','d_contrib_roth','d_contrib_hsa',
   'j_state','j_marital','j_otherIncome','j_currentSpend',
-  'j_retSpend','j_taxable','j_contrib_taxable','j_returnRate','j_inflRate',
+  'j_retSpend','j_taxable','j_contrib_taxable','j_capGainsRate','j_cash','j_cashRate','j_returnRate','j_inflRate','j_ssnCola',
+  'j_dependents',
   'j_dedMethod','j_ded_mortgage','j_ded_charity','j_ded_medical','j_ded_salt','j_ded_other',
   'j_rothEnable','j_rothStartY','j_rothEndY','j_rothStartD','j_rothEndD','j_rothAmt','j_rothBracket'
 ];
 
 // Collect all field values into a plain object
+// Currency fields are stored as plain numbers (strip $,) so storage is always clean
 function collectFields() {
   const data = {};
   FIELDS.forEach(id => {
     const e = document.getElementById(id);
-    if (e) data[id] = e.value;
+    if (!e) return;
+    const isCurrency = CURRENCY_INPUT_IDS.includes(id);
+    data[id] = isCurrency
+      ? (e.value || '').replace(/[$,]/g, '')
+      : e.value;
   });
   return data;
 }
@@ -2584,7 +3056,12 @@ function collectFields() {
 function applyFields(data) {
   FIELDS.forEach(id => {
     const e = document.getElementById(id);
-    if (e && data[id] !== undefined) e.value = data[id];
+    if (!e || data[id] === undefined) return;
+    // Always store raw numbers in DOM before formatting pass
+    const isCurrency = CURRENCY_INPUT_IDS.includes(id);
+    e.value = isCurrency
+      ? String(data[id]).replace(/[$,]/g, '')
+      : data[id];
   });
   syncAssumptionsBar();
   toggleDeductionFields();
@@ -2600,6 +3077,10 @@ function applyFields(data) {
   const ld2 = el('lbl-rothEndD');   if (ld2) ld2.textContent = n2 + ' End Age';
   // Apply household type UI
   applyHouseholdType();
+  // Rebuild dependent rows UI from restored JSON
+  renderDependentRows();
+  // Re-format all currency inputs after values are restored
+  formatCurrencyFields();
 }
 
 // ── Helper: read person names (with fallback) ──
@@ -2612,17 +3093,18 @@ const DEFAULTS = {
   p_planName: 'My Retirement Plan',
   p_name1: 'Person 1', p_name2: 'Person 2',
   j_household: 'couple',
-  y_age:'', y_retAge:'', y_lifeExp:90, y_salary:0, y_ssnAge:67,
+  y_age:'', y_retAge:'', y_birthYear:1963, y_lifeExp:90, y_salary:0, y_ssnAge:67,
   y_ssn62:0, y_ssn65:0, y_ssn67:0, y_ssn70:0,
   y_401k:0, y_roth:0, y_hsa:0, y_pension:0,
   y_contrib_401k:0, y_contrib_roth:0, y_contrib_hsa:0,
-  d_age:'', d_retAge:'', d_lifeExp:90, d_salary:0, d_ssnAge:67,
+  d_age:'', d_retAge:'', d_birthYear:1964, d_lifeExp:90, d_salary:0, d_ssnAge:67,
   d_ssn62:0, d_ssn65:0, d_ssn67:0, d_ssn70:0,
   d_401k:0, d_roth:0, d_hsa:0, d_pension:0,
   d_contrib_401k:0, d_contrib_roth:0, d_contrib_hsa:0,
   j_state:'CA', j_marital:'M', j_otherIncome:0,
   j_currentSpend:0, j_retSpend:0,
-  j_taxable:0, j_contrib_taxable:0, j_returnRate:6, j_inflRate:3,
+  j_taxable:0, j_contrib_taxable:0, j_capGainsRate:15, j_cash:0, j_cashRate:4.5, j_returnRate:6, j_inflRate:3, j_ssnCola:2.5,
+  j_dependents: '[]',
   j_dedMethod:'standard', j_ded_mortgage:0, j_ded_charity:0,
   j_ded_medical:0, j_ded_salt:10000, j_ded_other:0,
   j_rothEnable:'no', j_rothStartY:62, j_rothEndY:74,
@@ -2995,7 +3477,7 @@ function initSupabase() {
 
 // ── Auth overlay panel switcher ──
 function showAuthPanel(name) {
-  ['authLogin','authRegister','authForgot'].forEach(id => {
+  ['authLogin','authRegister','authForgot','authSetPassword'].forEach(id => {
     el(id).style.display = id === 'auth' + name.charAt(0).toUpperCase() + name.slice(1) ? '' : 'none';
   });
   // Clear all messages when switching panels
@@ -3055,11 +3537,43 @@ async function authForgotPassword() {
   el('forgotError').style.display   = 'none';
   el('forgotSuccess').style.display = 'none';
   if (!email) { authShowError('forgotError','Please enter your email.'); return; }
+  // Use the exact file path as redirect — strip any existing hash/query so token appends cleanly.
+  const redirectTo = window.location.origin + window.location.pathname;
   const { error } = await _sbClient.auth.resetPasswordForEmail(email, {
-    redirectTo: window.location.href
+    redirectTo
   });
   if (error) { authShowError('forgotError', error.message); return; }
   authShowSuccess('forgotSuccess','Reset link sent — check your inbox.');
+}
+
+// ── Set New Password (called from reset-link landing) ──
+// The recovery session is still active (we didn't sign out) so updateUser() works.
+// After success we sign out the temporary session and redirect to login with a success message.
+async function authSetNewPassword() {
+  const pwd     = el('setPasswordNew').value;
+  const confirm = el('setPasswordConfirm').value;
+  el('setPasswordError').style.display   = 'none';
+  el('setPasswordSuccess').style.display = 'none';
+  if (!pwd)            { authShowError('setPasswordError', 'Please enter a new password.'); return; }
+  if (pwd.length < 6)  { authShowError('setPasswordError', 'Password must be at least 6 characters.'); return; }
+  if (pwd !== confirm) { authShowError('setPasswordError', 'Passwords do not match.'); return; }
+  const btn = el('setPasswordBtn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  const { error } = await _sbClient.auth.updateUser({ password: pwd });
+  btn.disabled = false; btn.textContent = 'Set New Password';
+  if (error) { authShowError('setPasswordError', error.message); return; }
+  // Clear recovery mode BEFORE signing out so the SIGNED_OUT handler runs normally.
+  if (typeof window._clearRecoveryMode === 'function') window._clearRecoveryMode();
+  // Sign out the temporary recovery session — user must log in with new password.
+  await _sbClient.auth.signOut();
+  showAuthPanel('login');
+  // Show a success banner on the login screen.
+  const loginErr = el('loginError');
+  loginErr.textContent = '✓ Password updated — please sign in with your new password.';
+  loginErr.style.display = '';
+  loginErr.style.background = '#f0fdf4';
+  loginErr.style.color = '#166534';
+  loginErr.style.borderColor = '#bbf7d0';
 }
 
 // ── Guest mode ──
@@ -3555,12 +4069,35 @@ async function onUserSignedIn(user) {
 // ── Bootstrap on page load ──
 document.addEventListener('DOMContentLoaded', async () => {
   initSidebarToggle();
+  initCurrencyInputs();
+  renderDependentRows();
+
+  // Read BOTH hash and query string — Supabase appends token as hash fragment or query param.
+  const _hashParams  = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+  const _queryParams = new URLSearchParams(window.location.search);
+  const _tokenType   = _hashParams.get('type')          || _queryParams.get('type');
+  const _hasToken    = !!_hashParams.get('access_token') || !!_queryParams.get('access_token');
+  // _inRecovery stays true until the user successfully sets a new password.
+  // It blocks every onAuthStateChange event from triggering a normal login.
+  let _inRecovery = _tokenType === 'recovery' && _hasToken;
+
+  // initSupabase FIRST — the Supabase SDK reads the token from the URL on createClient().
+  // We must NOT clear the URL before this call or the SDK loses the token.
   initSupabase();
 
+  if (_inRecovery) {
+    // Now safe to clean the token from the URL bar (SDK already consumed it above).
+    history.replaceState(null, '', window.location.pathname);
+    // Show the set-password panel immediately before any async events fire.
+    el('authOverlay').style.display = '';
+    showAuthPanel('setPassword');
+  }
+
   if (_sbClient && !_guestMode) {
-    // onAuthStateChange fires for INITIAL_SESSION, SIGNED_IN, TOKEN_REFRESHED, SIGNED_OUT.
-    // We handle all session-bearing events the same way (idempotent via _sessionLoaded guard).
     _sbClient.auth.onAuthStateChange(async (event, session) => {
+      // While in recovery mode, swallow ALL events — we never auto-login from a reset link.
+      if (_inRecovery) return;
+
       if (session && session.user &&
           (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
         await onUserSignedIn(session.user);
@@ -3575,15 +4112,20 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     });
 
-    // Also check getSession() directly — belt-and-suspenders for file:// and some browsers
-    const { data: { session } } = await _sbClient.auth.getSession();
-    if (session && session.user) {
-      await onUserSignedIn(session.user);
+    // Only restore a normal session if this is NOT a password-recovery landing.
+    if (!_inRecovery) {
+      const { data: { session } } = await _sbClient.auth.getSession();
+      if (session && session.user) {
+        await onUserSignedIn(session.user);
+      }
     }
+
+    // Expose the flag-clear so authSetNewPassword() can re-enable normal auth after reset.
+    window._clearRecoveryMode = () => { _inRecovery = false; };
   } else {
     // Guest / not-yet-configured mode: hide overlay, load localStorage
     el('authOverlay').style.display = 'none';
-    el('planSwitcher').style.display = 'none'; // no switcher in guest mode
+    el('planSwitcher').style.display = 'none';
     const loaded = await loadFromStorage();
     if (!loaded) applyFields(DEFAULTS);
     calculate();
